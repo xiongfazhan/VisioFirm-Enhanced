@@ -11,7 +11,7 @@ setup(
     description='Fast semi-automated image annotation tool for computer vision tasks detection, oriented bounding boxes and segmentation.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/your-repo/visiofirm',  # Optional
+    url='https://github.com/OschAI/VisioFirm',  # Optional
     packages=find_packages(),
     include_package_data=True,
     install_requires=[line.strip() for line in open('requirements.txt') if line.strip() and not line.startswith('#')],
