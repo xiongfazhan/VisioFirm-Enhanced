@@ -1,5 +1,6 @@
 import logging
 from flask import Blueprint, render_template, request, jsonify, current_app
+from flask_login import login_required
 from werkzeug.utils import secure_filename
 import os
 import shutil
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 bp = Blueprint('dashboard', __name__)
 
 @bp.route('/')
+@login_required
 def index():
     projects = []
     for project_name in os.listdir(PROJECTS_FOLDER):
@@ -82,6 +84,7 @@ def extract_archive(file_path, extract_path):
         raise
 
 @bp.route('/create_project', methods=['POST'])
+@login_required
 def create_project():
     try:
         project_name = request.form.get('project_name', '').strip()
@@ -207,6 +210,7 @@ def ensure_unique_project_name(project_name):
     return new_name
 
 @bp.route('/get_unique_project_name', methods=['GET'])
+@login_required
 def get_unique_project_name():
     try:
         project_name = generate_unique_project_name()
@@ -216,6 +220,7 @@ def get_unique_project_name():
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @bp.route('/import_images', methods=['POST'])
+@login_required
 def import_images():
     try:
         project_name = request.form.get('project_name')
@@ -302,6 +307,7 @@ def import_images():
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @bp.route('/parse_annotations', methods=['POST'])
+@login_required
 def parse_annotations():
     upload_id = request.form.get('upload_id')
     class_names = request.form.get('class_names', '')
@@ -357,6 +363,7 @@ def parse_annotations():
     return jsonify({'success': True, 'summary': summary})
 
 @bp.route('/upload_chunk', methods=['POST'])
+@login_required
 def upload_chunk():
     if 'chunk' not in request.files:
         return jsonify({'error': 'No chunk provided'}), 400
@@ -420,6 +427,7 @@ def upload_chunk():
         return jsonify({'error': f'Chunk save failed: {str(e)}'}), 500
 
 @bp.route('/assemble_file', methods=['POST'])
+@login_required
 def assemble_file():
     import hashlib
     
@@ -482,6 +490,7 @@ def assemble_file():
         return jsonify({'error': f'Assembly failed: {str(e)}'}), 500
 
 @bp.route('/check_upload_status', methods=['POST'])
+@login_required
 def check_upload_status():
     upload_id = request.form.get('upload_id')
     file_id = request.form.get('file_id')
@@ -495,6 +504,7 @@ def check_upload_status():
     return jsonify({'uploaded_chunks': uploaded_chunks})
 
 @bp.route('/delete_project/<project_name>', methods=['POST'])
+@login_required
 def delete_project(project_name):
     project_path = os.path.join(PROJECTS_FOLDER, secure_filename(project_name))
     if os.path.exists(project_path):
@@ -508,6 +518,7 @@ def delete_project(project_name):
     return jsonify({'error': 'Project not found'}), 404
 
 @bp.route('/cleanup_chunks', methods=['POST'])
+@login_required
 def cleanup_chunks():
     temp_base = os.path.join(tempfile.gettempdir(), 'project_chunks')
     try:
@@ -521,6 +532,7 @@ def cleanup_chunks():
         return jsonify({'error': f'Cleanup failed: {str(e)}'}), 500
 
 @bp.route('/cleanup_temp', methods=['POST'])
+@login_required
 def cleanup_temp():
     """Manually clean up all temporary files older than 1 hour."""
     temp_base = os.path.join(tempfile.gettempdir(), 'project_chunks')
@@ -543,6 +555,7 @@ def cleanup_temp():
         return jsonify({'error': f'Cleanup failed: {str(e)}'}), 500
 
 @bp.route('/get_project_overview/<project_name>', methods=['GET'])
+@login_required
 def get_project_overview(project_name):
     project_path = os.path.join(PROJECTS_FOLDER, secure_filename(project_name))
     if not os.path.exists(project_path):

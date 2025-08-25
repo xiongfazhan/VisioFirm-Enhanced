@@ -48,6 +48,7 @@ class Project:
                 CREATE TABLE IF NOT EXISTS Annotations (
                     annotation_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     image_id INTEGER,
+                    user_id INTEGER,
                     type TEXT NOT NULL,
                     class_name TEXT,
                     x REAL,
@@ -77,6 +78,21 @@ class Project:
                     FOREIGN KEY (class_name) REFERENCES Classes(class_name)
                 )
             ''')
+            # Create or update ReviewedImages table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ReviewedImages (
+                    image_id INTEGER PRIMARY KEY,
+                    reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    user_id INTEGER
+                )
+            ''')
+            # Check if user_id column exists, and add it if not
+            cursor.execute("PRAGMA table_info(ReviewedImages)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'user_id' not in columns:
+                cursor.execute('''
+                    ALTER TABLE ReviewedImages ADD COLUMN user_id INTEGER
+                ''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_images_absolute_path ON Images(absolute_path)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_annotations_image_id ON Annotations(image_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_preannotations_image_id ON Preannotations(image_id)')
@@ -181,7 +197,7 @@ class Project:
             else:
                 logger.warning(f"No valid images to add for project {self.name}")
 
-    def save_annotations(self, image_path, annotations):
+    def save_annotations(self, image_path, annotations, user_id=None):
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT image_id FROM Images WHERE absolute_path = ?', (image_path,))
@@ -255,15 +271,16 @@ class Project:
                         continue
 
                 if (self.setup_type in ("Bounding Box", "Oriented Bounding Box") and (x is None or y is None or width is None or height is None)) or \
-                   (self.setup_type == "Segmentation" and segmentation is None):
+                (self.setup_type == "Segmentation" and segmentation is None):
                     logger.warning(f"Skipping invalid annotation for {anno.get('category_name')} in {image_path}: {anno}")
                     continue
 
                 cursor.execute('''
-                    INSERT INTO Annotations (image_id, type, class_name, x, y, width, height, rotation, segmentation)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO Annotations (image_id, user_id, type, class_name, x, y, width, height, rotation, segmentation)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     image_id,
+                    user_id,
                     anno_type,
                     anno.get('category_name') or anno.get('label'),
                     x,
@@ -273,7 +290,7 @@ class Project:
                     rotation,
                     segmentation
                 ))
-                logger.info(f"Saved annotation for {image_path}: type={anno_type}, class={anno.get('category_name')}, bbox=[{x}, {y}, {width}, {height}], rotation={rotation}")
+                logger.info(f"Saved annotation for {image_path}: type={anno_type}, class={anno.get('category_name')}, bbox=[{x}, {y}, {width}, {height}], rotation={rotation}, user_id={user_id}")
 
             # Clear preannotations after transfer
             cursor.execute('DELETE FROM Preannotations WHERE image_id = ?', (image_id,))
@@ -429,7 +446,7 @@ class Project:
                                             if 'bbox' in normalized_anno or 'segmentation' in normalized_anno:
                                                 normalized_annotations.append(normalized_anno)
                                     if normalized_annotations:
-                                        self.save_annotations(absolute_image_path, normalized_annotations)
+                                        self.save_annotations(absolute_image_path, normalized_annotations, None)
                                 else:
                                     logger.error(f"No image dimensions found for {absolute_image_path}")
             except Exception as e:
@@ -535,5 +552,5 @@ class Project:
                 GROUP BY i.image_id
             ''')
             counts = [row[0] for row in cursor.fetchall()]
-            logger.info(f"Annotations per image for project {self.name}: {counts}")
+            #logger.info(f"Annotations per image for project {self.name}: {counts}")
             return counts

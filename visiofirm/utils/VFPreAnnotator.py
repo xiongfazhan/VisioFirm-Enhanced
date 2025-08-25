@@ -81,7 +81,7 @@ class ImageProcessor:
             )[0]
             all_boxes.append(result["boxes"])
             all_scores.append(result["scores"])
-            all_labels.extend(result["labels"])
+            all_labels.extend(result["text_labels"])
 
         if all_boxes:
             combined_boxes = torch.cat(all_boxes, dim=0)
@@ -390,32 +390,32 @@ class PreAnnotator:
                         for i in range(len(boxes))
                     ]
 
-                    # Cluster overlapping annotations
-                    G = nx.Graph()
-                    for i in range(len(annotations)):
-                        for j in range(i + 1, len(annotations)):
-                            if self.compute_iou(annotations[i]["box"], annotations[j]["box"]) > 0.9:
-                                G.add_edge(i, j)
-                    clusters = list(nx.connected_components(G))
+                    if self.model_type == "yolo":
+                        # Cluster overlapping annotations
+                        G = nx.Graph()
+                        for i in range(len(annotations)):
+                            for j in range(i + 1, len(annotations)):
+                                if self.compute_iou(annotations[i]["box"], annotations[j]["box"]) > 0.9:
+                                    G.add_edge(i, j)
+                        clusters = list(nx.connected_components(G))
 
-                    # Include singletons
-                    all_indices = set(range(len(annotations)))
-                    cluster_indices = set.union(*clusters) if clusters else set()
-                    singletons = all_indices - cluster_indices
-                    clusters.extend([{i} for i in singletons])
+                        # Include singletons
+                        all_indices = set(range(len(annotations)))
+                        cluster_indices = set.union(*clusters) if clusters else set()
+                        singletons = all_indices - cluster_indices
+                        clusters.extend([{i} for i in singletons])
 
-                    # Process clusters
-                    kept_annotations = []
-                    for cluster in clusters:
-                        cluster_annotations = [annotations[i] for i in cluster]
-                        if len(cluster) == 1:
-                            kept_annotations.append(cluster_annotations[0])
-                        else:
-                            unique_labels = list(set(anno["label"] for anno in cluster_annotations))
-                            if len(unique_labels) == 1:
-                                best_anno = max(cluster_annotations, key=lambda x: x["score"])
+                        # Process clusters
+                        kept_annotations = []
+                        for cluster in clusters:
+                            cluster_annotations = [annotations[i] for i in cluster]
+                            if len(cluster) == 1:
+                                kept_annotations.append(cluster_annotations[0])
                             else:
-                                if self.model_type == "yolo":
+                                unique_labels = list(set(anno["label"] for anno in cluster_annotations))
+                                if len(unique_labels) == 1:
+                                    best_anno = max(cluster_annotations, key=lambda x: x["score"])
+                                else:
                                     cluster_boxes = [anno["box"] for anno in cluster_annotations]
                                     x1 = max(0, min(b[0] for b in cluster_boxes))
                                     y1 = max(0, min(b[1] for b in cluster_boxes))
@@ -425,9 +425,9 @@ class PreAnnotator:
                                     best_label = self.get_best_label(cropped_image, unique_labels)
                                     candidates = [anno for anno in cluster_annotations if anno["label"] == best_label]
                                     best_anno = max(candidates, key=lambda x: x["score"])
-                                else:
-                                    best_anno = max(cluster_annotations, key=lambda x: x["score"])
-                            kept_annotations.append(best_anno)
+                                kept_annotations.append(best_anno)
+                    else:
+                        kept_annotations = annotations
 
                     # Insert annotations into database
                     inserted_count = 0

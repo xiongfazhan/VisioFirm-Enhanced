@@ -14,5 +14,8 @@ def get_cache_folder():
     os.makedirs(cache_dir, exist_ok=True)
     return cache_dir
 
+def get_db_path():
+    return os.path.join(get_cache_folder(), 'users.db')
+
 PROJECTS_FOLDER = get_cache_folder()
 VALID_IMAGE_EXTENSIONS = {'.webp', '.jpg', '.jpeg', '.JPG', '.JPEG', '.png', '.avif'}

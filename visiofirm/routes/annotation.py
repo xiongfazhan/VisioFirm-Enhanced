@@ -1,8 +1,10 @@
 from flask import Blueprint, render_template, request, jsonify, send_file, current_app
+from flask_login import login_required, current_user
 import os
 import sqlite3
 from visiofirm.config import PROJECTS_FOLDER
 from visiofirm.models.project import Project
+from visiofirm.models.user import get_user_by_id
 from io import BytesIO
 import zipfile
 from visiofirm.utils.export_utils import split_images, generate_coco_export, generate_yolo_export, generate_pascal_voc_export, generate_csv_export
@@ -23,6 +25,7 @@ blind_trust_status = {}
 blind_trust_progress = {}
 
 @bp.route('/ai_preannotator_config', methods=['POST'])
+@login_required
 def ai_preannotator_config():
     """
     Handle AI pre-annotation configuration and execution in a background thread.
@@ -32,9 +35,7 @@ def ai_preannotator_config():
         mode = request.form.get('mode')
         device = request.form.get('processing_unit', 'cpu')
         box_threshold = float(request.form.get('box_threshold', 0.2))
-        if device=='gpu':
-            device = 'cuda'
-            
+
         if not project_name or not mode:
             return jsonify({'success': False, 'error': 'Project name and mode required'}), 400
 
@@ -106,6 +107,7 @@ def ai_preannotator_config():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @bp.route('/check_preannotation_status', methods=['GET'])
+@login_required
 def check_preannotation_status():
     """
     Check the status and progress of the pre-annotation process for a project.
@@ -118,6 +120,7 @@ def check_preannotation_status():
     return jsonify({'success': True, 'status': status, 'progress': progress})
 
 @bp.route('/blind_trust', methods=['POST'])
+@login_required
 def blind_trust():
     """
     Convert pre-annotations above a confidence threshold to official annotations.
@@ -138,16 +141,18 @@ def blind_trust():
         if not os.path.exists(config_db_path):
             return jsonify({'success': False, 'error': 'Project not found'}), 404
 
+        # Capture user_id from the current user
+        user_id = current_user.id
+
         # Set initial status and progress
         blind_trust_status[project_name] = 'running'
         blind_trust_progress[project_name] = 0
 
         # Define the background task
-        def run_blind_trust(project_name, confidence_threshold, config_db_path):
+        def run_blind_trust(project_name, confidence_threshold, config_db_path, user_id):
             try:
                 with sqlite3.connect(config_db_path) as conn:
                     cursor = conn.cursor()
-                    # Get all images with pre-annotations
                     cursor.execute('''
                         SELECT DISTINCT i.image_id, i.absolute_path
                         FROM Images i
@@ -160,7 +165,6 @@ def blind_trust():
                     processed_images = 0
 
                     for image_id, absolute_path in images:
-                        # Fetch pre-annotations above threshold
                         cursor.execute('''
                             SELECT preannotation_id, type, class_name, x, y, width, height, rotation, segmentation, confidence
                             FROM Preannotations
@@ -168,18 +172,19 @@ def blind_trust():
                         ''', (image_id, confidence_threshold))
                         preannotations = cursor.fetchall()
 
-                        # Delete existing annotations for this image
                         cursor.execute('DELETE FROM Annotations WHERE image_id = ?', (image_id,))
 
-                        # Insert pre-annotations into Annotations table
                         for preanno in preannotations:
                             cursor.execute('''
-                                INSERT INTO Annotations (image_id, type, class_name, x, y, width, height, rotation, segmentation)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            ''', (image_id, preanno[1], preanno[2], preanno[3], preanno[4], preanno[5], preanno[6], preanno[7], preanno[8]))
+                                INSERT INTO Annotations (image_id, user_id, type, class_name, x, y, width, height, rotation, segmentation)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ''', (image_id, user_id, preanno[1], preanno[2], preanno[3], preanno[4], preanno[5], preanno[6], preanno[7], preanno[8]))
                         
-                        # Delete all pre-annotations for this image
                         cursor.execute('DELETE FROM Preannotations WHERE image_id = ?', (image_id,))
+
+                        cursor.execute('''
+                            INSERT OR REPLACE INTO ReviewedImages (image_id, user_id) VALUES (?, ?)
+                        ''', (image_id, user_id))
 
                         processed_images += 1
                         blind_trust_progress[project_name] = (processed_images / total_images) * 100 if total_images > 0 else 100
@@ -192,10 +197,10 @@ def blind_trust():
                 blind_trust_status[project_name] = 'failed'
                 blind_trust_progress[project_name] = 0
 
-        # Start the background thread
+        # Start the background thread with all required arguments
         thread = threading.Thread(
             target=run_blind_trust,
-            args=(project_name, confidence_threshold, config_db_path)
+            args=(project_name, confidence_threshold, config_db_path, user_id)
         )
         thread.start()
         return jsonify({'success': True, 'message': 'Blind Trust started'})
@@ -216,69 +221,94 @@ def check_blind_trust_status():
     return jsonify({'success': True, 'status': status, 'progress': progress})
 
 @bp.route('/<project_name>')
+@login_required
 def annotation(project_name):
-    project_path = os.path.join(PROJECTS_FOLDER, project_name)
-    if not os.path.exists(project_path):
-        return "Project not found", 404
-    
-    project = Project(project_name, "", "", project_path)
-    images = project.get_images()
-    class_list = project.get_classes()
-    setup_type = project.get_setup_type()
-    
-    image_urls = [
-        os.path.join('/projects', project_name, 'images', os.path.basename(img[1]))
-        for img in images
-    ]
-    
-    with sqlite3.connect(project.db_path) as conn:
-        cursor = conn.cursor()
-        # Ensure ReviewedImages table exists
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS ReviewedImages (
-                image_id INTEGER PRIMARY KEY,
-                reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
+    try:
+        project_path = os.path.join(PROJECTS_FOLDER, project_name)
+        if not os.path.exists(project_path):
+            return "Project not found", 404
         
-        # Fetch annotated_images: images with annotations or reviewed
-        cursor.execute('''
-            SELECT i.absolute_path
-            FROM Images i
-            LEFT JOIN Annotations a ON i.image_id = a.image_id
-            LEFT JOIN ReviewedImages r ON i.image_id = r.image_id
-            WHERE a.annotation_id IS NOT NULL OR r.image_id IS NOT NULL
-            GROUP BY i.image_id
-        ''')
-        annotated_images = {
-            os.path.join('/projects', project_name, 'images', os.path.basename(row[0]))
-            for row in cursor.fetchall()
-        }
+        project = Project(project_name, "", "", project_path)
+        images = project.get_images()
+        class_list = project.get_classes()
+        setup_type = project.get_setup_type()
         
-        # Fetch preannotated_images: images with preannotations but not annotated or reviewed
-        cursor.execute('''
-            SELECT i.absolute_path
-            FROM Images i
-            JOIN Preannotations p ON i.image_id = p.image_id
-            LEFT JOIN Annotations a ON i.image_id = a.image_id
-            LEFT JOIN ReviewedImages r ON i.image_id = r.image_id
-            WHERE a.annotation_id IS NULL AND r.image_id IS NULL
-            GROUP BY i.image_id
-        ''')
-        preannotated_images = {
-            os.path.join('/projects', project_name, 'images', os.path.basename(row[0]))
-            for row in cursor.fetchall()
-        }
+        image_urls = [
+            os.path.join('/projects', project_name, 'images', os.path.basename(img[1]))
+            for img in images
+        ]
+        
+        image_annotators = {}
+        with sqlite3.connect(project.db_path) as conn:
+            cursor = conn.cursor()
+            # Ensure ReviewedImages table exists
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ReviewedImages (
+                    image_id INTEGER PRIMARY KEY,
+                    reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    user_id INTEGER
+                )
+            ''')
+            
+            # Fetch annotated_images: images with annotations or reviewed
+            cursor.execute('''
+                SELECT i.absolute_path
+                FROM Images i
+                LEFT JOIN Annotations a ON i.image_id = a.image_id
+                LEFT JOIN ReviewedImages r ON i.image_id = r.image_id
+                WHERE a.annotation_id IS NOT NULL OR r.image_id IS NOT NULL
+                GROUP BY i.image_id
+            ''')
+            annotated_images = {
+                os.path.join('/projects', project_name, 'images', os.path.basename(row[0]))
+                for row in cursor.fetchall()
+            }
+            
+            # Fetch preannotated_images: images with preannotations but not annotated or reviewed
+            cursor.execute('''
+                SELECT i.absolute_path
+                FROM Images i
+                JOIN Preannotations p ON i.image_id = p.image_id
+                LEFT JOIN Annotations a ON i.image_id = a.image_id
+                LEFT JOIN ReviewedImages r ON i.image_id = r.image_id
+                WHERE a.annotation_id IS NULL AND r.image_id IS NULL
+                GROUP BY i.image_id
+            ''')
+            preannotated_images = {
+                os.path.join('/projects', project_name, 'images', os.path.basename(row[0]))
+                for row in cursor.fetchall()
+            }
+            
+            # Fetch annotator information for all images
+            cursor.execute('''
+                SELECT i.absolute_path, r.user_id
+                FROM Images i
+                LEFT JOIN ReviewedImages r ON i.image_id = r.image_id
+            ''')
+            for absolute_path, user_id in cursor.fetchall():
+                image_url = os.path.join('/projects', project_name, 'images', os.path.basename(absolute_path))
+                if user_id:
+                    user = get_user_by_id(user_id)
+                    image_annotators[image_url] = f"{user[3][0]}.{user[4][0]}" if user else None
+                else:
+                    image_annotators[image_url] = None
+        
+        return render_template('annotation.html',
+                            project_name=project_name,
+                            images=image_urls,
+                            classes=class_list,
+                            setup_type=setup_type,
+                            annotated_images=annotated_images,
+                            preannotated_images=preannotated_images,
+                            image_annotators=image_annotators,
+                            current_user_avatar=f"{current_user.first_name[0]}.{current_user.last_name[0]}" if current_user.first_name and current_user.last_name else "")
     
-    return render_template('annotation.html',
-                          project_name=project_name,
-                          images=image_urls,
-                          classes=class_list,
-                          setup_type=setup_type,
-                          annotated_images=annotated_images,
-                          preannotated_images=preannotated_images)
+    except Exception as e:
+        logger.error(f"Error in annotation route for {project_name}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @bp.route('/get_annotations/<project_name>/<path:image_path>', methods=['GET'])
+@login_required
 def get_annotations(project_name, image_path):
     try:
         project_path = os.path.join(PROJECTS_FOLDER, project_name)
@@ -375,6 +405,7 @@ def get_annotations(project_name, image_path):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @bp.route('/save_annotations', methods=['POST'])
+@login_required
 def save_annotations():
     try:
         data = request.json
@@ -382,7 +413,7 @@ def save_annotations():
             return jsonify({'success': False, 'error': 'Invalid request data'}), 400
 
         project_name = data['project']
-        image_filename = data['image']  # Expecting just the filename, e.g., "image.jpg"
+        image_filename = data['image']
         raw_annotations = data['annotations']
 
         project_path = os.path.join(PROJECTS_FOLDER, project_name)
@@ -461,13 +492,13 @@ def save_annotations():
                     segmentation
                 ))
 
-            # Mark the image as reviewed
+            # Mark the image as reviewed with the current user's ID
             cursor.execute('''
-                INSERT OR REPLACE INTO ReviewedImages (image_id) VALUES (?)
-            ''', (image_id,))
+                INSERT OR REPLACE INTO ReviewedImages (image_id, user_id) VALUES (?, ?)
+            ''', (image_id, current_user.id))
 
             conn.commit()
-            logger.info(f"Saved {len(raw_annotations)} annotations for {absolute_image_path} and marked as reviewed")
+            logger.info(f"Saved {len(raw_annotations)} annotations for {absolute_image_path} by user {current_user.id} and marked as reviewed")
 
         return jsonify({'success': True})
 
@@ -476,6 +507,7 @@ def save_annotations():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @bp.route('/delete_images', methods=['POST'])
+@login_required
 def delete_images():
     data = request.json
     project_name = data.get('project')
@@ -523,6 +555,7 @@ def delete_images():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @bp.route('/download_images', methods=['POST'])
+@login_required
 def download_images():
     data = request.json
     project_name = data.get('project')
@@ -556,6 +589,7 @@ def download_images():
     )
 
 @bp.route('/export/<project_name>', methods=['POST'])
+@login_required
 def export_annotations(project_name):
     data = request.json
     format_type = data.get('format')
