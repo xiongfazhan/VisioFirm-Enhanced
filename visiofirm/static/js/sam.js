@@ -17,7 +17,7 @@ export async function initializeSegmentor() {
   const model_id = "Xenova/slimsam-77-uniform";
   try {
     model = await SamModel.from_pretrained(model_id, {
-      dtype: "fp16",
+      dtype: "fp32",
       device: navigator.gpu ? "webgpu" : "wasm",
     });
     processor = await AutoProcessor.from_pretrained(model_id);
