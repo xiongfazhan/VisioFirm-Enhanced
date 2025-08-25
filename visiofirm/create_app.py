@@ -1,5 +1,5 @@
 from flask import Flask, send_from_directory
-from .config import PROJECTS_FOLDER
+from visiofirm.config import PROJECTS_FOLDER
 import os
 
 def create_app():
@@ -9,8 +9,8 @@ def create_app():
 
     os.makedirs(PROJECTS_FOLDER, exist_ok=True)
     
-    from .routes.dashboard import bp as dashboard_bp
-    from .routes.annotation import bp as annotation_bp
+    from visiofirm.routes.dashboard import bp as dashboard_bp
+    from visiofirm.routes.annotation import bp as annotation_bp
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(annotation_bp)
     
