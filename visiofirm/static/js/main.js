@@ -6,7 +6,9 @@ import {
     setSelectedClass,
     selectedAnnotation,
     annotations,
-    updateTagHighlights
+    updateTagHighlights,
+    mode,
+    setMode
 } from './globals.js';
 import { initializeGridView, switchToAnnotationView, switchToGridView, sortImages, toggleView } from './viewManagement.js';
 import { initToolControls } from './toolControls.js';
@@ -20,6 +22,7 @@ import { pushToUndoStack } from './annotationCore.js';
 import { setAnnotationCache, setConfidenceThreshold } from '/static/js/globals.js';
 import { initImportModal } from '/static/js/importHandler.js';
 import { showLoadingOverlay, hideLoadingOverlay } from '/static/js/spinnerLoader.js';  
+import { initializeSegmentor } from './sam.js';
 
 function hideLoadingAnimation() {
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -37,9 +40,11 @@ export function updateAnnotationStatus(imagePath, isAnnotated) {
         const statusSpan = gridCard.querySelector('.image-status');
         const checkSpan = gridCard.querySelector('.annotated-check');
         gridCard.dataset.annotated = isAnnotated;
+        gridCard.dataset.preannotated = isAnnotated ? 'false' : gridCard.dataset.preannotated;
         if (statusSpan) {
-            statusSpan.textContent = isAnnotated ? 'Annotated' : 'Not Annotated';
+            statusSpan.textContent = isAnnotated ? 'Annotated' : (gridCard.dataset.preannotated === 'true' ? 'Pre-Annotated' : 'Not Annotated');
             statusSpan.dataset.annotated = isAnnotated;
+            statusSpan.dataset.preannotated = isAnnotated ? 'false' : gridCard.dataset.preannotated;
         }
         if (isAnnotated) {
             if (!checkSpan) {
@@ -55,10 +60,22 @@ export function updateAnnotationStatus(imagePath, isAnnotated) {
     const listRow = document.querySelector(`#list-table .image-checkbox[data-path="${imagePath}"]`)?.closest('tr');
     if (listRow) {
         listRow.dataset.annotated = isAnnotated;
+        listRow.dataset.preannotated = isAnnotated ? 'false' : listRow.dataset.preannotated;
         const statusCell = listRow.cells[4];
+        const annotatorCell = listRow.cells[5];
         if (statusCell) {
-            statusCell.textContent = isAnnotated ? 'Annotated' : 'Not Annotated';
+            statusCell.textContent = isAnnotated ? 'Annotated' : (listRow.dataset.preannotated === 'true' ? 'Pre-Annotated' : 'Not Annotated');
             statusCell.dataset.annotated = isAnnotated;
+            statusCell.dataset.preannotated = isAnnotated ? 'false' : listRow.dataset.preannotated;
+        }
+        if (isAnnotated && annotatorCell) {
+            const appConfig = document.getElementById('app-config');
+            const currentUserAvatar = appConfig.dataset.currentUserAvatar || '';
+            listRow.dataset.annotator = currentUserAvatar;
+            annotatorCell.innerHTML = currentUserAvatar ? `<div class="avatar">${currentUserAvatar}</div>` : '-';
+        } else if (annotatorCell) {
+            listRow.dataset.annotator = 'null';
+            annotatorCell.innerHTML = '-';
         }
     }
 }
@@ -186,7 +203,7 @@ window.addEventListener('load', () => {
         const deleteModal = document.getElementById('delete-images-confirm-modal');
         const deleteMessage = document.getElementById('delete-images-message');
         deleteMessage.textContent = `Are you sure you want to delete ${imageUrls.length} selected image${imageUrls.length > 1 ? 's' : ''}?`;
-        deleteModal.style.display = 'block';
+        deleteModal.style.display = 'flex';
     
         document.getElementById('confirm-delete-images').onclick = async () => {
             try {
@@ -253,6 +270,16 @@ window.addEventListener('load', () => {
     initShortcutsSidebar();
     updateShortcutsNotice();
     initSaveHandling(updateAnnotationStatus);
+
+    // Load SAM model on page load
+    initializeSegmentor();
+
+    // Add listener for magic mode button
+    document.getElementById('magic-mode').addEventListener('click', function() {
+        setMode('magic');
+        document.querySelectorAll('.control-btn').forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+    });
 });
 
 function generateClassColors(classes) {
@@ -526,7 +553,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         if (isEnabled) {
-            document.querySelector('.ratio-control[data-split="-train"]').style.display = 'flex';
+            document.querySelector('.ratio-control[data-split="train"]').style.display = 'flex';
         }
     }
 
@@ -695,7 +722,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let selectedFormat = null;
 
     exportBtn.addEventListener('click', () => {
-        exportModal.style.display = 'block';
+        exportModal.style.display = 'flex';
         selectedFormat = null;
         confirmExportBtn.disabled = true;
         nextExportBtn.disabled = true;
@@ -725,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 (setupType === "Segmentation" && !['COCO', 'YOLO'].includes(format))) {
                 card.style.display = 'none';
             } else {
-                card.style.display = 'block';
+                card.style.display = 'flex';
             }
         });
     });

@@ -175,7 +175,8 @@
 </div>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/setup.css') }}">
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<!-- <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script> -->
+<script type="module" src="/static/js/jslib/plotly-2.35.2.min.js"></script>
 
 <style>
 .progress-container {
@@ -750,7 +751,7 @@
             const imageCount = card.querySelectorAll('.project-images img').length;
 
             deleteProjectName = projectName;
-            deleteMessage.textContent = `Are you sure you want to delete project "${projectName}" with ${imageCount} image${imageCount !== 1 ? 's' : ''}?`;
+            deleteMessage.textContent = `Are you sure you want to delete project "${projectName}" ?`;
             deleteModal.style.display = 'block';
         });
     });
@@ -760,7 +761,7 @@
             e.stopPropagation();
             const projectName = btn.dataset.project;
             document.getElementById('overview-project-name').textContent = projectName;
-            overviewModal.style.display = 'block';
+            overviewModal.style.display = 'flex';
 
             try {
                 const response = await fetch(`/get_project_overview/${projectName}`);

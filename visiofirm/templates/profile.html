@@ -1,0 +1,133 @@
+{% extends "labeler_base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<style>
+    .profile-container {
+        max-width: 700px;
+        margin: 40px auto;
+        padding: 30px;
+        background: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .profile-container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    }
+    .profile-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .profile-header h1 {
+        font-size: 2.5rem;
+        color: #2c3e50;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .avatar {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(45deg, #007bff, #00c4ff);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: bold;
+        margin: 0 auto 20px;
+        box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+        transition: transform 0.3s ease;
+    }
+    .avatar:hover {
+        transform: scale(1.05);
+    }
+    .form-group {
+        margin-bottom: 25px;
+        position: relative;
+    }
+    .form-group label {
+        display: block;
+        font-size: 1.1rem;
+        color: #34495e;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #dfe6e9;
+        border-radius: 8px;
+        font-size: 1rem;
+        color: #2d3436;
+        background-color: #fff;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .form-group input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+        outline: none;
+    }
+    .save-btn {
+        display: block;
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(90deg, #007bff, #0056b3);
+        color: white;
+        font-size: 1.1rem;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.3s ease, transform 0.2s ease;
+    }
+    .save-btn:hover {
+        background: linear-gradient(90deg, #0056b3, #003d82);
+        transform: translateY(-2px);
+    }
+    .save-btn:active {
+        transform: translateY(0);
+    }
+    .user-id {
+        font-size: 1rem;
+        color: #636e72;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+</style>
+<div class="profile-container">
+    <div class="profile-header">
+        <h1>Your Profile</h1>
+        <p class="user-id"><strong>User ID:</strong> {{ user.id }}</p>
+        <div class="avatar">
+            {{ user.first_name[0]|upper }}.{{ user.last_name[0]|upper }}
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.profile') }}">
+        <div class="form-group">
+            <label for="first_name">First Name</label>
+            <input id="first_name" name="first_name" type="text" value="{{ user.first_name }}" placeholder="First Name">
+        </div>
+        <div class="form-group">
+            <label for="last_name">Last Name</label>
+            <input id="last_name" name="last_name" type="text" value="{{ user.last_name }}" placeholder="Last Name">
+        </div>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" value="{{ user.email }}" placeholder="Email">
+        </div>
+        <div class="form-group">
+            <label for="password">New Password (leave blank to keep current)</label>
+            <input id="password" name="password" type="password" placeholder="New Password">
+        </div>
+        <div class="form-group">
+            <label for="company">Company</label>
+            <input id="company" name="company" type="text" value="{{ user.company or '' }}" placeholder="Company">
+        </div>
+        <button type="submit" class="save-btn">Save Changes</button>
+    </form>
+</div>
+{% endblock %}

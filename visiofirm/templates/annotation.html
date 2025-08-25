@@ -1,6 +1,47 @@
 {% extends "labeler_base.html" %}
 {% block title %}{{ project_name }} - Annotation{% endblock %}
 {% block content %}
+<style>
+    .avatar {
+        width: 30px;
+        height: 30px;
+        background: linear-gradient(45deg, #007bff, #00c4ff);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        margin: 0 auto;
+    }
+    .image-status, .list-table td[data-annotated] {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 4px;
+        align-self: flex-start;
+        margin-top: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .image-status[data-annotated="true"], .list-table td[data-annotated="true"] {
+        background: rgba(76, 201, 240, 0.1);
+        color: #4cc9f0;
+    }
+    .image-status[data-annotated="false"][data-preannotated="true"], .list-table td[data-annotated="false"][data-preannotated="true"] {
+        background: rgba(139, 69, 19, 0.1);
+        color: #8B4513;
+    }
+    .image-status[data-annotated="false"][data-preannotated="false"], .list-table td[data-annotated="false"][data-preannotated="false"] {
+        background: rgba(255, 165, 0, 0.1);
+        color: #e67e22;
+    }
+    .control-btn img {
+        width: 2em;
+        height: 2em;
+        vertical-align: middle;
+    }
+</style>
     <!-- Grid View -->
     <div id="grid-view" class="view-container grid-view">
         <div class="grid-header">
@@ -68,7 +109,7 @@
                         <div class="card-info">
                             <span class="image-id">{{ loop.index0 }}</span>
                             <span class="image-date">{{ '2023-01-01' }}</span>
-                            <span class="image-status {% if image in annotated_images %}status-annotated{% elif image in preannotated_images %}status-preannotated{% else %}status-notannotated{% endif %}">
+                            <span class="image-status" data-annotated="{% if image in annotated_images %}true{% else %}false{% endif %}" data-preannotated="{% if image in preannotated_images %}true{% else %}false{% endif %}">
                                 {% if image in annotated_images %}
                                     Annotated
                                 {% elif image in preannotated_images %}
@@ -90,11 +131,12 @@
                     <th>Preview</th>
                     <th>Date of Annotation</th>
                     <th>Completion</th>
+                    <th>Annotator</th>
                 </tr>
             </thead>
             <tbody>
                 {% for image in images %}
-                    <tr data-id="{{ loop.index0 }}" data-date="{{ '2023-01-01' }}" data-annotated="{% if image in annotated_images %}true{% else %}false{% endif %}" data-preannotated="{% if image in preannotated_images %}true{% else %}false{% endif %}">
+                    <tr data-id="{{ loop.index0 }}" data-date="{{ '2023-01-01' }}" data-annotated="{% if image in annotated_images %}true{% else %}false{% endif %}" data-preannotated="{% if image in preannotated_images %}true{% else %}false{% endif %}" data-annotator="{% if image_annotators.get(image) %}{{ image_annotators[image] }}{% else %}null{% endif %}">
                         <td>
                             <input type="checkbox" class="image-checkbox" data-path="{{ image }}">
                         </td>
@@ -105,13 +147,20 @@
                             </div>
                         </td>
                         <td>{{ '2023-01-01' }}</td>
-                        <td class="image-status {% if image in annotated_images %}status-annotated{% elif image in preannotated_images %}status-preannotated{% else %}status-notannotated{% endif %}">
+                        <td class="image-status" data-annotated="{% if image in annotated_images %}true{% else %}false{% endif %}" data-preannotated="{% if image in preannotated_images %}true{% else %}false{% endif %}">
                             {% if image in annotated_images %}
                                 Annotated
                             {% elif image in preannotated_images %}
                                 Pre-Annotated
                             {% else %}
                                 Not Annotated
+                            {% endif %}
+                        </td>
+                        <td class="annotator-cell">
+                            {% if image_annotators.get(image) %}
+                                <div class="avatar">{{ image_annotators[image] }}</div>
+                            {% else %}
+                                -
                             {% endif %}
                         </td>
                     </tr>
@@ -158,19 +207,20 @@
                         </div>
                     </div>
                     <div class="canvas-controls">
-                        <button class="control-btn" id="rect-mode" title="Draw Rectangle"><i class="far fa-square"></i></button>
-                        <button class="control-btn" id="polygon-mode" title="Draw Polygon"><i class="fa-solid fa-draw-polygon"></i></button>
-                        <button class="control-btn" id="select-mode" title="Select Labels"><i class="fas fa-mouse-pointer"></i></button>
-                        <button class="control-btn" id="reset-view" title="Reset View"><i class="fa fa-refresh"></i></button>
-                        <button class="control-btn" id="undo-btn" title="Undo Last Action"><i class="fas fa-undo"></i></button>
-                        <button class="control-btn" id="delete-btn" title="Delete Selected Annotation"><i class="fas fa-trash"></i></button>
-                        <button class="control-btn" id="zoom-in-btn" title="Zoom In"><i class="fas fa-search-plus"></i></button>
-                        <button class="control-btn" id="zoom-out-btn" title="Zoom Out"><i class="fas fa-search-minus"></i></button>
-                        <button class="control-btn" id="duplicate-btn" title="Duplicate Selected Annotation"><i class="fas fa-copy"></i></button>
-                        <button class="control-btn" id="save-btn" title="Save Annotations"><i class="fas fa-save"></i></button>
-                        <button class="control-btn" id="grid-btn" title="Toggle Grid"><i class="fas fa-th"></i></button>
-                        <button class="control-btn" id="prev-image-btn" title="Previous Image"><i class="fas fa-arrow-left"></i></button>
-                        <button class="control-btn" id="next-image-btn" title="Next Image"><i class="fas fa-arrow-right"></i></button>
+                        <button class="control-btn" id="rect-mode" title="Draw Rectangle"><img src="{{ url_for('static', filename='img/logos/rect-mode.svg') }}" alt="Draw Rectangle"></button>
+                        <button class="control-btn" id="polygon-mode" title="Draw Polygon"><img src="{{ url_for('static', filename='img/logos/polygon-mode.svg') }}" alt="Draw Polygon"></button>
+                        <button class="control-btn" id="magic-mode" title="One Click Annotation"><img src="{{ url_for('static', filename='img/logos/magic-mode.svg') }}" alt="One Click Annotation"></button>
+                        <button class="control-btn" id="select-mode" title="Select Labels"><img src="{{ url_for('static', filename='img/logos/select-mode.svg') }}" alt="Select Labels"></button>
+                        <button class="control-btn" id="reset-view" title="Reset View"><img src="{{ url_for('static', filename='img/logos/reset-view.svg') }}" alt="Reset View"></button>
+                        <button class="control-btn" id="undo-btn" title="Undo Last Action"><img src="{{ url_for('static', filename='img/logos/undo-btn.svg') }}" alt="Undo Last Action"></button>
+                        <button class="control-btn" id="delete-btn" title="Delete Selected Annotation"><img src="{{ url_for('static', filename='img/logos/delete-btn.svg') }}" alt="Delete Selected Annotation"></button>
+                        <button class="control-btn" id="zoom-in-btn" title="Zoom In"><img src="{{ url_for('static', filename='img/logos/zoom-in-btn.svg') }}" alt="Zoom In"></button>
+                        <button class="control-btn" id="zoom-out-btn" title="Zoom Out"><img src="{{ url_for('static', filename='img/logos/zoom-out-btn.svg') }}" alt="Zoom Out"></button>
+                        <button class="control-btn" id="duplicate-btn" title="Duplicate Selected Annotation"><img src="{{ url_for('static', filename='img/logos/duplicate-btn.svg') }}" alt="Duplicate Selected Annotation"></button>
+                        <button class="control-btn" id="save-btn" title="Save Annotations"><img src="{{ url_for('static', filename='img/logos/save-btn.svg') }}" alt="Save Annotations"></button>
+                        <button class="control-btn" id="grid-btn" title="Toggle Grid"><img src="{{ url_for('static', filename='img/logos/grid-btn.svg') }}" alt="Toggle Grid"></button>
+                        <button class="control-btn" id="prev-image-btn" title="Previous Image"><img src="{{ url_for('static', filename='img/logos/prev-image-btn.svg') }}" alt="Previous Image"></button>
+                        <button class="control-btn" id="next-image-btn" title="Next Image"><img src="{{ url_for('static', filename='img/logos/next-image-btn.svg') }}" alt="Next Image"></button>
                     </div>
                 </div>
                 <div class="ai-options">
@@ -408,7 +458,7 @@
         </div>
     </div>
 
-        <div class="modal" id="blind-trust-modal">
+    <div class="modal" id="blind-trust-modal">
         <div class="modal-content ai-modal-content">
             <button class="close-btn">×</button>
             <h2>Blind Trust Configuration</h2>
@@ -427,15 +477,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/setup.css') }}">
 
-    <script id="app-config" type="application/json">
+    <script id="app-config" type="application/json" data-current-user-avatar="{{ current_user_avatar }}">
         {
             "setupType": "{{ setup_type }}",
             "projectName": "{{ project_name }}",
             "classes": {{ classes|tojson }}
         }
-    </script>
-    <script type="module">
-    
     </script>
     <script type="module" src="/static/js/main.js"></script>
 {% endblock %}

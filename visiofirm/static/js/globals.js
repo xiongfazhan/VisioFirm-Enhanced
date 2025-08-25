@@ -64,6 +64,10 @@ export function initGlobals() {
     setupType = config.setupType;
     classColors = {};
     console.log('Initializing class colors for:', config.classes);
+    
+    if (config.classes.length > 0) {
+        setSelectedClass(config.classes[0]);
+    }
 
     config.classes.forEach(cls => {
         classColors[cls] = getClassColor(cls);

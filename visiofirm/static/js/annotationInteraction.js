@@ -1,4 +1,4 @@
-import {
+import { 
     canvas,
     viewport,
     currentImage,
@@ -31,6 +31,7 @@ import {
 import { drawImage } from './annotationDrawing.js';
 import { setHoveredAnnotation } from './annotationDrawing.js';
 import { toImageCoords, toCanvasCoords, clampToImageBounds, pushToUndoStack, clampAnnotationToBounds } from './annotationCore.js';
+import { segmentArea } from './sam.js';
 
 export function getMousePos(canvas, e) {
     const rect = canvas.getBoundingClientRect();
@@ -213,6 +214,12 @@ function handleMouseDown(e) {
     const pos = getMousePos(canvas, e);
     const imgPos = toImageCoords(pos.x, pos.y);
 
+    if (mode === 'magic' && e.button === 0) {
+        const clampedPos = clampToImageBounds(imgPos);
+        segmentArea(clampedPos);
+        return;
+    }
+
     if (e.button === 2 && !e.shiftKey) {
         const clickedAnnotation = findSelectedAnnotation(pos);
         if (clickedAnnotation) {
@@ -271,7 +278,6 @@ function handleMouseDown(e) {
             };
             pushToUndoStack();
             annotations.push(newAnnotation);
-            setSelectedAnnotation(newAnnotation);
             updateTagHighlights();
             setCurrentAnnotation(null);
             setIsDrawing(false);
@@ -307,7 +313,6 @@ function handleMouseDown(e) {
                 if (currentAnnotation.points.length > 2) {
                     pushToUndoStack();
                     annotations.push(currentAnnotation);
-                    setSelectedAnnotation(currentAnnotation);
                     updateTagHighlights();
                 }
                 setCurrentAnnotation(null);
@@ -694,7 +699,6 @@ function handleMouseUp(e) {
         if (Math.abs(currentAnnotation.width) > 5 && Math.abs(currentAnnotation.height) > 5) {
             pushToUndoStack();
             annotations.push(currentAnnotation);
-            setSelectedAnnotation(currentAnnotation);
             updateTagHighlights();
         }
         setCurrentAnnotation(null);

@@ -1,0 +1,41 @@
+{% extends "labeler_base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+
+    <h1>Account Settings</h1>
+
+    <div class="mt-4">
+        <h2>API Key</h2>
+        <p><strong>Your API Key:</strong> {{ user.api_key }}</p>
+        <form method="POST" action="{{ url_for('auth.generate_api_key') }}" class="mb-3">
+            <button type="submit" class="btn btn-warning">Generate New Key</button>
+        </form>
+        <p class="text-muted">Keep your API key secure. Anyone with this key can access your data.</p>
+    </div>
+
+    <div class="mt-4">
+        <h2>Your Projects</h2>
+        {% if projects %}
+            <ul>
+                {% for project in projects %}
+                    <li>{{ project }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>You have not created any projects yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="mt-4">
+        <h2>API Documentation</h2>
+        <p>Use your API key to authenticate requests:</p>
+        <pre>curl -H "Authorization: Bearer {{ user.api_key }}" https://api.visiofirm.com/v1/projects</pre>
+        <h3>Available Endpoints</h3>
+        <ul>
+            <li><code>GET /projects</code> - List all projects</li>
+            <li><code>POST /projects</code> - Create new project</li>
+            <li><code>GET /projects/{id}/export</code> - Export project annotations</li>
+        </ul>
+    </div>
+
+{% endblock %}

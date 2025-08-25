@@ -1,0 +1,90 @@
+{% extends "labeler_base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<canvas id="three-canvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;"></canvas>
+<div class="login-form">
+    <h2>Login</h2>
+    <form method="post">
+        <div class="form-group">
+            <label for="identifier">Username or Email</label>
+            <input type="text" id="identifier" name="identifier" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Login</button>
+    </form>
+    <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register</a></p>
+    <p><a href="{{ url_for('auth.reset_password') }}">Forgot Password?</a></p>
+
+</div>
+<style>
+    .login-form {
+        max-width: 400px;
+        margin: 50px auto;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        border-radius: 8px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .login-form h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #333;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .form-group input[required] {
+        border-color: #999; /* Optional: subtle indication of required fields */
+    }
+
+    button[type="submit"] {
+        width: 100%;
+        padding: 10px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    button[type="submit"]:hover {
+        background: #2980b9; /* Darker shade on hover */
+    }
+
+    .login-form p {
+        text-align: center;
+        margin-top: 15px;
+        color: #333;
+    }
+
+    .login-form p a {
+        color: #3498db;
+        text-decoration: none;
+    }
+
+    .login-form p a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
