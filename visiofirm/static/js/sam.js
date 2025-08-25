@@ -18,16 +18,15 @@ export async function initializeSegmentor() {
   console.log('Initializing SAM model...');
   const model_id = "Xenova/slimsam-77-uniform";
 
-  // Configure ONNX Runtime for WASM to use fewer threads and prevent system overload/lag
-  ort.env.wasm.numThreads = 1;  // Limit to 1 thread (or try 2); default is hardware concurrency which can cause high CPU usage and freezing on Linux
-  ort.env.wasm.simd = true;  // Enable SIMD for better perf if supported
-  ort.env.wasm.proxy = true;  // Run in a Web Worker to avoid blocking the main thread
+  ort.env.wasm.numThreads = 1; 
+  ort.env.wasm.simd = true; 
+  ort.env.wasm.proxy = true; 
 
   async function isWebGPUSupported() {
     if (!navigator.gpu) return false;
     try {
       const adapter = await navigator.gpu.requestAdapter();
-      return !!adapter;  // Returns true only if adapter is successfully obtained
+      return !!adapter; 
     } catch (e) {
       console.warn('WebGPU adapter request failed:', e);
       return false;
