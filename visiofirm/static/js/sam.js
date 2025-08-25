@@ -1,11 +1,10 @@
 import {
+  env,  // Add env to the import
   SamModel,
   AutoProcessor,
   RawImage,
   Tensor
 } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3/dist/transformers.min.js";
-
-import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js";  // Add this import for ONNX Runtime config
 
 import { currentImage, annotations, selectedClass, setupType, updateTagHighlights, setSelectedAnnotation } from './globals.js';
 import { drawImage } from './annotationDrawing.js';
@@ -18,15 +17,15 @@ export async function initializeSegmentor() {
   console.log('Initializing SAM model...');
   const model_id = "Xenova/slimsam-77-uniform";
 
-  ort.env.wasm.numThreads = 1; 
-  ort.env.wasm.simd = true; 
-  ort.env.wasm.proxy = true; 
+  env.backends.onnx.wasm.numThreads = 1; 
+  env.backends.onnx.wasm.simd = true; 
+  env.backends.onnx.wasm.proxy = true; 
 
   async function isWebGPUSupported() {
     if (!navigator.gpu) return false;
     try {
       const adapter = await navigator.gpu.requestAdapter();
-      return !!adapter; 
+      return !!adapter;  
     } catch (e) {
       console.warn('WebGPU adapter request failed:', e);
       return false;
@@ -38,7 +37,7 @@ export async function initializeSegmentor() {
 
   try {
     model = await SamModel.from_pretrained(model_id, {
-      dtype: "fp16",  
+      dtype: "fp32",
       device: device,
     });
     processor = await AutoProcessor.from_pretrained(model_id);
