@@ -1,0 +1,441 @@
+{% extends "labeler_base.html" %}
+{% block title %}{{ project_name }} - Annotation{% endblock %}
+{% block content %}
+    <!-- Grid View -->
+    <div id="grid-view" class="view-container grid-view">
+        <div class="grid-header">
+            <div class="bulk-actions">
+                <button class="grid-btn" id="select-all-btn" title="Select All">
+                    <i class="fas fa-check-square"></i> Select All
+                </button>
+                <button class="grid-btn" id="download-btn" title="Download Unlabeled" disabled>
+                    <i class="fas fa-download"></i> Download
+                </button>
+                <button class="grid-btn" id="delete-images-btn" title="Delete Selected" disabled>
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+                <button class="grid-btn" id="import-images-btn" title="Import More Images">
+                    <i class="fas fa-upload"></i> Import
+                </button>
+                <button class="grid-btn" id="export-btn" title="Export Annotations">
+                    <i class="fas fa-file-export"></i> Export
+                </button>
+            </div>
+            <div class="grid-controls">
+                <div class="dropdown">
+                    <button id="sort-btn" class="layout-btn" title="Rearrange List">
+                        <i class="fas fa-sort"></i> Sort
+                    </button>
+                    <div class="dropdown-content">
+                        <a href="#" data-sort="name-asc">Name (A-Z)</a>
+                        <a href="#" data-sort="name-desc">Name (Z-A)</a>
+                        <a href="#" data-sort="date-asc">Date (Oldest First)</a>
+                        <a href="#" data-sort="date-desc">Date (Newest First)</a>
+                        <a href="#" data-sort="status-asc">Completion (Annotated First)</a>
+                        <a href="#" data-sort="status-desc">Completion (Unannotated First)</a>
+                    </div>
+                </div>
+                <button id="grid-toggle-btn" class="layout-btn active" title="Grid View" data-view="grid">
+                    <i class="fas fa-th"></i> Grid
+                </button>
+                <button id="list-toggle-btn" class="layout-btn" title="List View" data-view="list">
+                    <i class="fas fa-list"></i> List
+                </button>
+            </div>
+            <button id="ai-preannotator-btn" class="layout-btn ai-preannotator-btn" title="AI Pre-annotator">
+                <i class="fas fa-robot"></i> AI Pre-annotator
+            </button>
+            <button id="ai-blind-trust" class="layout-btn ai-blind-trust" title="Blind Trust">
+                <i class="fa-solid fa-fingerprint"></i> Blind Trust
+            </button>
+            <button id="viewport-btn-grid" class="layout-btn" title="Switch to Viewport Mode">
+                <i class="fas fa-desktop"></i> Annotate
+            </button>
+        </div>
+        <div class="grid-content">
+            <div id="grid-thumbnails" class="grid-thumbnails">
+                {% for image in images %}
+                    <div class="grid-card" data-id="{{ image.split('/')[-1] }}" data-date="{{ '2023-01-01' }}" data-annotated="{% if image in annotated_images %}true{% else %}false{% endif %}" data-preannotated="{% if image in preannotated_images %}true{% else %}false{% endif %}">
+                        <div class="card-checkbox">
+                            <input type="checkbox" class="image-checkbox" data-path="{{ image }}">
+                        </div>
+                        <div class="card-image-container">
+                            <img data-src="{{ image }}" alt="Thumbnail" class="lazy-load">
+                            {% if image in annotated_images %}
+                                <span class="annotated-check"><i class="fas fa-check"></i></span>
+                            {% endif %}
+                        </div>
+                        <div class="card-info">
+                            <span class="image-id">{{ loop.index0 }}</span>
+                            <span class="image-date">{{ '2023-01-01' }}</span>
+                            <span class="image-status {% if image in annotated_images %}status-annotated{% elif image in preannotated_images %}status-preannotated{% else %}status-notannotated{% endif %}">
+                                {% if image in annotated_images %}
+                                    Annotated
+                                {% elif image in preannotated_images %}
+                                    Pre-Annotated
+                                {% else %}
+                                    Not Annotated
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <table id="list-table" class="list-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Select</th>
+                    <th>ID</th>
+                    <th>Preview</th>
+                    <th>Date of Annotation</th>
+                    <th>Completion</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for image in images %}
+                    <tr data-id="{{ loop.index0 }}" data-date="{{ '2023-01-01' }}" data-annotated="{% if image in annotated_images %}true{% else %}false{% endif %}" data-preannotated="{% if image in preannotated_images %}true{% else %}false{% endif %}">
+                        <td>
+                            <input type="checkbox" class="image-checkbox" data-path="{{ image }}">
+                        </td>
+                        <td>{{ loop.index0 }}</td>
+                        <td class="thumbnail-cell">
+                            <div class="list-thumbnail-container">
+                                <img data-src="{{ image }}" alt="Thumbnail" class="lazy-load">
+                            </div>
+                        </td>
+                        <td>{{ '2023-01-01' }}</td>
+                        <td class="image-status {% if image in annotated_images %}status-annotated{% elif image in preannotated_images %}status-preannotated{% else %}status-notannotated{% endif %}">
+                            {% if image in annotated_images %}
+                                Annotated
+                            {% elif image in preannotated_images %}
+                                Pre-Annotated
+                            {% else %}
+                                Not Annotated
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Annotation View -->
+    <div id="annotation-view" class="view-container annotation-container hide">
+        <div class="images-list">
+            <div class="images-header">
+                <h2>Images</h2>
+                <button id="viewport-btn-annotation" class="layout-btn" title="Switch to Grid View">
+                    <i class="fas fa-th-large"></i> Grid View
+                </button>
+            </div>
+            <div class="thumbnails">
+                <table class="thumbnail-table">
+                    <tbody>
+                        {% for image in images %}
+                            <tr class="thumbnail-row" data-index="{{ loop.index0 }}" data-id="{{ image.split('/')[-1] }}">
+                                <td class="thumbnail-id">{{ loop.index0 }}</td>
+                                <td class="thumbnail-image">
+                                    <img data-src="{{ image }}" alt="Thumbnail" class="lazy-load">
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="labeling-area">
+            <div class="image-workspace">
+                <div class="image-container">
+                    <div class="image-info"></div>
+                    <canvas id="labeling-canvas"></canvas>
+                    <div class="shortcuts-sidebar">
+                        <button class="shortcuts-toggle" title="Toggle Shortcuts">
+                            <i class="fas fa-keyboard"></i> Shortcuts
+                        </button>
+                        <div class="shortcuts-content">
+                            <div class="shortcuts-legend"></div>
+                            <div class="shortcuts-list"></div>
+                        </div>
+                    </div>
+                    <div class="canvas-controls">
+                        <button class="control-btn" id="rect-mode" title="Draw Rectangle"><i class="far fa-square"></i></button>
+                        <button class="control-btn" id="polygon-mode" title="Draw Polygon"><i class="fa-solid fa-draw-polygon"></i></button>
+                        <button class="control-btn" id="select-mode" title="Select Labels"><i class="fas fa-mouse-pointer"></i></button>
+                        <button class="control-btn" id="reset-view" title="Reset View"><i class="fa fa-refresh"></i></button>
+                        <button class="control-btn" id="undo-btn" title="Undo Last Action"><i class="fas fa-undo"></i></button>
+                        <button class="control-btn" id="delete-btn" title="Delete Selected Annotation"><i class="fas fa-trash"></i></button>
+                        <button class="control-btn" id="zoom-in-btn" title="Zoom In"><i class="fas fa-search-plus"></i></button>
+                        <button class="control-btn" id="zoom-out-btn" title="Zoom Out"><i class="fas fa-search-minus"></i></button>
+                        <button class="control-btn" id="duplicate-btn" title="Duplicate Selected Annotation"><i class="fas fa-copy"></i></button>
+                        <button class="control-btn" id="save-btn" title="Save Annotations"><i class="fas fa-save"></i></button>
+                        <button class="control-btn" id="grid-btn" title="Toggle Grid"><i class="fas fa-th"></i></button>
+                        <button class="control-btn" id="prev-image-btn" title="Previous Image"><i class="fas fa-arrow-left"></i></button>
+                        <button class="control-btn" id="next-image-btn" title="Next Image"><i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+                <div class="ai-options">
+                    <button id="hide-prediction-btn">Hide Pred.</button>
+                    <div class="confidence-slider">
+                        <label for="confidence-slider">Conf.: <span id="confidence-value">0.4</span></label>
+                        <input type="range" id="confidence-slider" min="0" max="1" step="0.01" value="0.4" style="-webkit-appearance: slider-vertical; writing-mode: bt-lr; width: 8px; height: 100%;">
+                    </div>
+                </div>
+            </div>
+            <div class="control-panel">
+                <div class="class-selector">
+                    <div id="class-tags-container"></div>
+                </div>
+                <button class="approve-btn" id="approve-btn">Approve</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="save-modal" class="modal">
+        <div class="modal-content">
+            <div class="save-icon">
+                <svg class="checkmark" viewBox="0 0 52 52">
+                    <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+            <p class="save-message">Annotations saved successfully!</p>
+        </div>
+    </div>
+
+    <div class="modal" id="import-images-modal">
+        <div class="modal-content">
+            <button class="close-btn import-close-btn">×</button>
+            <h2 class="modal-title">Import More Images</h2>
+            <form id="import-images-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label class="import-label">Import Images for <span class="project-name-highlight">{{ project_name }}</span></label>
+                    <div class="drop-zone" id="import-images-drop-zone">
+                        <i class="fa-solid fa-file-arrow-down drop-icon"></i>
+                        <p>Drag and drop images/folders/archives here or click to upload</p>
+                        <p><strong>Accepted file formats:</strong></p>
+                        <p>Image: .webp, .jpg, .jpeg, .png, .avif</p>
+                        <p>Compressed file with images: .zip, .tar, .rar</p>
+                        <p>Folder of images</p>
+                        <p id="import-images-compress-message" class="compress-message" style="display: none;">Compressed file detected! It will be extracted on submission.</p>
+                    </div>
+                    <input type="file" id="import-images-file-input" name="files" multiple 
+                        accept=".webp,.WEBP,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.avif,.AVIF,.zip,.ZIP,.tar,.TAR,.rar,.RAR" 
+                        style="display: none;" webkitdirectory directory>
+                    <div id="import-images-file-list" class="file-list" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
+                </div>
+                <div id="import-images-progress-container" style="margin-top: 10px;"></div>
+                <button type="submit" class="create-btn" disabled>Import Files</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="delete-images-confirm-modal">
+        <div class="modal-content danger-modal">
+            <div class="modal-header danger-header">
+                <div class="header-content">
+                    <i class="fas fa-exclamation-triangle danger-icon"></i>
+                    <h2>Confirm Image Deletion</h2>
+                </div>
+                <button class="close-btn" id="cancel-delete-images" title="Close">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="delete-images-message">Are you sure you want to delete the selected images? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="cancel-btn" id="cancel-delete-images-footer">Cancel</button>
+                <button class="delete-btn" id="confirm-delete-images">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="export-modal">
+        <div class="modal-content export-modal-content">
+            <button class="close-btn export-close-btn">×</button>
+            <div class="export-tabs">
+                <!-- Tab Navigation -->
+                <div class="tab-nav">
+                    <button class="tab-link active" data-tab="format-tab">Format</button>
+                    <button class="tab-link" data-tab="split-tab">Split Configuration</button>
+                </div>
+                
+                <!-- Format Selection Tab -->
+                <div id="format-tab" class="tab-content active">
+                    <h2 class="modal-title">Export Annotations</h2>
+                    <p class="modal-subtitle">Select an export format for your annotated images.</p>
+                    <div class="format-options">
+                        {% if setup_type != "Oriented Bounding Box" %}
+                        <div class="format-card" data-format="COCO">
+                            <img src="{{ url_for('static', filename='img/coco_logo.png') }}" alt="COCO Format">
+                            <h3>COCO</h3>
+                            <p>JSON file with images, ideal for object detection and segmentation.</p>
+                        </div>
+                        <div class="format-card" data-format="PASCAL_VOC">
+                            <img src="{{ url_for('static', filename='img/pascal_voc_logo.png') }}" alt="Pascal VOC Format">
+                            <h3>Pascal VOC</h3>
+                            <p>XML files with images, widely used for object detection.</p>
+                        </div>
+                        {% endif %}
+                        <div class="format-card" data-format="YOLO">
+                            <img src="{{ url_for('static', filename='img/yolo_logo.png') }}" alt="YOLO Format">
+                            <h3>YOLO</h3>
+                            <p>YAML and TXT files with images, optimized for YOLO models.</p>
+                        </div>
+                        <div class="format-card" data-format="CSV">
+                            <img src="{{ url_for('static', filename='img/csv_logo.png') }}" alt="CSV Format">
+                            <h3>CSV</h3>
+                            <p>Tabular data with images, great for custom analysis.</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="cancel-btn" id="cancel-export">Cancel</button>
+                        <button class="next-btn" id="next-export-button">Next</button>
+                    </div>
+                </div>
+                
+                <!-- Split Configuration Tab -->
+                <div id="split-tab" class="tab-content">
+                    <h2 class="modal-title">Dataset Split Configuration</h2>
+                    <p class="modal-subtitle">Configure how to split your dataset between train, test, and validation sets.</p>
+                    
+                    <div class="split-options">
+                        <div class="split-toggle">
+                            <label class="switch">
+                                <input type="checkbox" id="enable-splitting" checked>
+                                <span class="slider round"></span>
+                            </label>
+                            <span>Enable Dataset Splitting</span>
+                        </div>
+                        
+                        <div class="split-selection">
+                            <div class="split-choice">
+                                <input type="checkbox" id="train-split" name="split" value="train" checked disabled>
+                                <label for="train-split">Train</label>
+                            </div>
+                            <div class="split-choice">
+                                <input type="checkbox" id="test-split" name="split" value="test">
+                                <label for="test-split">Test</label>
+                            </div>
+                            <div class="split-choice">
+                                <input type="checkbox" id="val-split" name="split" value="val">
+                                <label for="val-split">Validation</label>
+                            </div>
+                        </div>
+                        
+                        <div class="split-ratios">
+                            <div class="ratio-control" data-split="train">
+                                <label for="train-ratio">Train:</label>
+                                <input type="range" id="train-ratio" min="0" max="100" value="70" step="5">
+                                <input type="number" id="train-ratio-value" min="0" max="100" value="70">
+                                <span>%</span>
+                            </div>
+                            <div class="ratio-control" data-split="test" style="display: none;">
+                                <label for="test-ratio">Test:</label>
+                                <input type="range" id="test-ratio" min="0" max="100" value="15" step="5">
+                                <input type="number" id="test-ratio-value" min="0" max="100" value="15">
+                                <span>%</span>
+                            </div>
+                            <div class="ratio-control" data-split="val" style="display: none;">
+                                <label for="val-ratio">Validation:</label>
+                                <input type="range" id="val-ratio" min="0" max="100" value="15" step="5">
+                                <input type="number" id="val-ratio-value" min="0" max="100" value="15">
+                                <span>%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="ratio-summary">
+                            <div class="ratio-total">
+                                <strong>Total:</strong>
+                                <span id="ratio-total-value">100</span>
+                                <span>%</span>
+                            </div>
+                            <div class="ratio-error" id="ratio-error" style="display: none;">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span>Ratios must sum to 100%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button class="back-btn" id="back-export-button">Back</button>
+                        <button class="export-btn" id="confirm-export" disabled>Export</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="ai-preannotator-modal">
+        <div class="modal-content ai-modal-content">
+            <button class="close-btn">×</button>
+            <h2>AI Pre-annotator Configuration</h2>
+            <form id="ai-preannotator-form">
+                <div class="form-group">
+                    <label>Annotation Mode</label>
+                    <div class="mode-buttons">
+                        <button type="button" class="mode-btn active" data-mode="zero-shot">Zero-shot Detection</button>
+                        <button type="button" class="mode-btn" data-mode="custom-model">Ultralytics Model</button>
+                    </div>
+                    <input type="hidden" id="mode" name="mode" value="zero-shot">
+                </div>
+                <div id="zero-shot-options" class="form-group">
+                    <label>Grounding Dino Model</label>
+                    <select id="dino-model">
+                        <option value="tiny">Tiny</option>
+                        <option value="base">Base</option>
+                    </select>
+                </div>
+                <div id="custom-model-path" class="form-group" style="display: none;">
+                    <label>Model Path</label>
+                    <input type="text" id="model-path-input" name="model_path" placeholder="Enter absolute path to .pt model">
+                    <p>Leave empty to use default YOLOv10x</p>
+                </div>
+                <div class="form-group">
+                    <label>Processing Unit</label>
+                    <select id="processing-unit">
+                        <option value="cpu">CPU</option>
+                        <option value="gpu">GPU</option>
+                    </select>
+                    <p id="cpu-warning" style="display: none; color: orange;">Warning: CPU processing may take longer.</p>
+                </div>
+                <div class="form-group">
+                    <label>Box Threshold</label>
+                    <input type="number" id="box-threshold" name="box_threshold" min="0" max="1" step="0.01" value="0.2">
+                    <p>Adjust detection sensitivity (0 to 1)</p>
+                </div>
+                <button type="submit" class="create-btn">Apply</button>
+            </form>
+        </div>
+    </div>
+
+        <div class="modal" id="blind-trust-modal">
+        <div class="modal-content ai-modal-content">
+            <button class="close-btn">×</button>
+            <h2>Blind Trust Configuration</h2>
+            <form id="blind-trust-form">
+                <div class="form-group">
+                    <label>Confidence Threshold</label>
+                    <input type="number" id="confidence-threshold" name="confidence_threshold" min="0" max="1" step="0.01" value="0.5">
+                    <p>Minimum confidence for pre-annotations to be accepted as official annotations (0 to 1)</p>
+                </div>
+                <button type="submit" class="create-btn">Apply</button>
+            </form>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/setup.css') }}">
+
+    <script id="app-config" type="application/json">
+        {
+            "setupType": "{{ setup_type }}",
+            "projectName": "{{ project_name }}",
+            "classes": {{ classes|tojson }}
+        }
+    </script>
+    <script type="module">
+    
+    </script>
+    <script type="module" src="/static/js/main.js"></script>
+{% endblock %}

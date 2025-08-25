@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - VisioFirm</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        html, body {
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .top-bar {
+            background: var(--card-bg);
+            padding: 0 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 64px;
+            position: relative;
+            z-index: 100;
+        }
+        
+        .top-bar img {
+            height: 40px;
+            margin-right: 16px;
+        }
+
+        main {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .top-bar h1 a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 2.25rem;
+            font-weight: 600;
+        }
+
+        .nav-links a {
+            color: var(--text-color);
+            text-decoration: none;
+            margin-left: 24px;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <header>
+        <nav class="top-bar">
+            <h1>
+                <img src="{{ url_for('static', filename='img/VisioFirm_logo.png') }}" alt="VisioFirm Logo">
+                <a href="/">VisioFirm</a>
+            </h1>
+            <div class="nav-links">
+                <a href="/">Dashboard</a>
+            </div>
+        </nav>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+</body>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</html>
