@@ -15,13 +15,28 @@ let processor = null;
 export async function initializeSegmentor() {
   console.log('Initializing SAM model...');
   const model_id = "Xenova/slimsam-77-uniform";
+
+  async function isWebGPUSupported() {
+    if (!navigator.gpu) return false;
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      return !!adapter;  // Returns true only if adapter is successfully obtained
+    } catch (e) {
+      console.warn('WebGPU adapter request failed:', e);
+      return false;
+    }
+  }
+
+  const useWebGPU = await isWebGPUSupported();
+  const device = useWebGPU ? "webgpu" : "wasm";
+
   try {
     model = await SamModel.from_pretrained(model_id, {
-      dtype: "fp32",
-      device: navigator.gpu ? "webgpu" : "wasm",
+      dtype: "fp32",  // Retain fp32 as per previous fix
+      device: device,
     });
     processor = await AutoProcessor.from_pretrained(model_id);
-    console.log('SAM model and processor loaded');
+    console.log(`SAM model and processor loaded using ${device} backend`);
   } catch (e) {
     console.error('Failed to load SAM model:', e);
   }
