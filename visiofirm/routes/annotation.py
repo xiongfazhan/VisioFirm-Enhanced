@@ -32,7 +32,9 @@ def ai_preannotator_config():
         mode = request.form.get('mode')
         device = request.form.get('processing_unit', 'cpu')
         box_threshold = float(request.form.get('box_threshold', 0.2))
-
+        if device=='gpu':
+            device = 'cuda'
+            
         if not project_name or not mode:
             return jsonify({'success': False, 'error': 'Project name and mode required'}), 400
 
