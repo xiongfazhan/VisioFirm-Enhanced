@@ -61,7 +61,7 @@ def ai_preannotator_config():
                         model_type=model_type,
                         config_db_path=config_db_path,
                         device=device,
-                        threshold=box_threshold
+                        box_threshold=box_threshold
                     )
                 elif mode == 'custom-model':
                     proc = PreAnnotator(
