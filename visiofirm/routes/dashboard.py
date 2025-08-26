@@ -7,12 +7,11 @@ import shutil
 import zipfile
 import tarfile
 import rarfile
-import tempfile
 import sqlite3
 from filelock import FileLock
 import time
 import psutil
-from visiofirm.config import PROJECTS_FOLDER, VALID_IMAGE_EXTENSIONS
+from visiofirm.config import PROJECTS_FOLDER, VALID_IMAGE_EXTENSIONS, get_cache_folder
 from visiofirm.models.project import Project
 from visiofirm.utils import CocoAnnotationParser, YoloAnnotationParser, NameMatcher, is_valid_image
 
@@ -28,10 +27,10 @@ def index():
     projects = []
     for project_name in os.listdir(PROJECTS_FOLDER):
         project_path = os.path.join(PROJECTS_FOLDER, project_name)
-        if os.path.isdir(project_path):
+        if os.path.isdir(project_path) and project_name != 'temp_chunks':
             db_path = os.path.join(project_path, 'config.db')
-            creation_date = None
             if os.path.exists(db_path):
+                creation_date = None
                 try:
                     with sqlite3.connect(db_path) as conn:
                         cursor = conn.cursor()
@@ -40,20 +39,20 @@ def index():
                         creation_date = result[0] if result else None
                 except Exception as e:
                     logger.error(f"Error fetching creation date for {project_name}: {e}")
-            
-            images_path = os.path.join(project_path, 'images')
-            image_files = [
-                f for f in os.listdir(images_path)
-                if os.path.isfile(os.path.join(images_path, f)) and os.path.splitext(f)[1].lower() in VALID_IMAGE_EXTENSIONS
-            ] if os.path.exists(images_path) else []
-            projects.append({
-                'name': project_name,
-                'images': [
-                    os.path.join('/projects', project_name, 'images', img)
-                    for img in image_files[:3]
-                ],
-                'creation_date': creation_date
-            })
+                
+                images_path = os.path.join(project_path, 'images')
+                image_files = [
+                    f for f in os.listdir(images_path)
+                    if os.path.isfile(os.path.join(images_path, f)) and os.path.splitext(f)[1].lower() in VALID_IMAGE_EXTENSIONS
+                ] if os.path.exists(images_path) else []
+                projects.append({
+                    'name': project_name,
+                    'images': [
+                        os.path.join('/projects', project_name, 'images', img)
+                        for img in image_files[:3]
+                    ],
+                    'creation_date': creation_date
+                })
     
     projects.sort(key=lambda p: p['creation_date'] or '', reverse=True)
     return render_template('index.html', projects=projects)
@@ -112,7 +111,10 @@ def create_project():
         project = Project(project_name, description, setup_type, project_path)
         project.add_classes(class_list)
 
-        temp_upload_dir = os.path.join(tempfile.gettempdir(), 'project_chunks', upload_id)
+        cache_dir = get_cache_folder()
+        temp_base = os.path.join(cache_dir, 'temp_chunks')
+        os.makedirs(temp_base, exist_ok=True)
+        temp_upload_dir = os.path.join(temp_base, upload_id)
         if not os.path.exists(temp_upload_dir):
             return jsonify({'error': 'No files found for upload ID'}), 400
 
@@ -238,7 +240,10 @@ def import_images():
 
         project = Project(project_name, '', '', project_path)
 
-        temp_upload_dir = os.path.join(tempfile.gettempdir(), 'project_chunks', upload_id)
+        cache_dir = get_cache_folder()
+        temp_base = os.path.join(cache_dir, 'temp_chunks')
+        os.makedirs(temp_base, exist_ok=True)
+        temp_upload_dir = os.path.join(temp_base, upload_id)
         if not os.path.exists(temp_upload_dir):
             return jsonify({'error': 'No files found for upload ID'}), 400
 
@@ -313,7 +318,9 @@ def parse_annotations():
     class_names = request.form.get('class_names', '')
     project_classes = [cls.strip() for cls in class_names.replace(';', ',').replace('.', ',').split(',') if cls.strip()]
 
-    temp_upload_dir = os.path.join(tempfile.gettempdir(), 'project_chunks', upload_id)
+    cache_dir = get_cache_folder()
+    temp_base = os.path.join(cache_dir, 'temp_chunks')
+    temp_upload_dir = os.path.join(temp_base, upload_id)
     if not os.path.exists(temp_upload_dir):
         return jsonify({'error': 'Upload ID not found'}), 404
 
@@ -377,12 +384,16 @@ def upload_chunk():
     if not all([upload_id, file_id, filename]):
         return jsonify({'error': 'Missing upload parameters'}), 400
 
-    temp_dir = os.path.join(tempfile.gettempdir(), 'project_chunks', upload_id, file_id)
+    # Change to user cache-based temp dir
+    cache_dir = get_cache_folder()
+    temp_base = os.path.join(cache_dir, 'temp_chunks')  # New subdir for chunks
+    os.makedirs(temp_base, exist_ok=True)
+    
+    temp_dir = os.path.join(temp_base, upload_id, file_id)
     os.makedirs(temp_dir, exist_ok=True)
     
     # Clean up stale temporary files (older than 1 hour)
     try:
-        temp_base = os.path.join(tempfile.gettempdir(), 'project_chunks')
         current_time = time.time()
         for temp_upload_id in os.listdir(temp_base):
             temp_upload_path = os.path.join(temp_base, temp_upload_id)
@@ -396,16 +407,16 @@ def upload_chunk():
 
     # Validate temporary directory
     try:
-        temp_stat = os.stat(tempfile.gettempdir())
-        if not os.access(tempfile.gettempdir(), os.W_OK):
-            logger.error(f"Temporary directory {tempfile.gettempdir()} is not writable")
+        temp_stat = os.stat(temp_base)
+        if not os.access(temp_base, os.W_OK):
+            logger.error(f"Temporary directory {temp_base} is not writable")
             return jsonify({'error': 'Server error: Temporary directory not writable'}), 500
         # Check available disk space (in bytes)
-        total, used, free = shutil.disk_usage(tempfile.gettempdir())
+        total, used, free = shutil.disk_usage(temp_base)
         chunk_size = chunk.seek(0, os.SEEK_END)
         chunk.seek(0)  # Reset to start
         if free < chunk_size:
-            logger.error(f"Insufficient disk space in {tempfile.gettempdir()}: {free} bytes available, {chunk_size} bytes needed")
+            logger.error(f"Insufficient disk space in {temp_base}: {free} bytes available, {chunk_size} bytes needed")
             return jsonify({'error': 'Server error: Insufficient disk space'}), 500
         # Log disk and memory usage
         memory = psutil.virtual_memory()
@@ -440,8 +451,12 @@ def assemble_file():
     if not all([upload_id, file_id, filename]):
         return jsonify({'error': 'Missing assembly parameters'}), 400
 
-    temp_dir = os.path.join(tempfile.gettempdir(), 'project_chunks', upload_id, file_id)
-    final_dir = os.path.join(tempfile.gettempdir(), 'project_chunks', upload_id)
+    # Change to user cache-based temp dir
+    cache_dir = get_cache_folder()
+    temp_base = os.path.join(cache_dir, 'temp_chunks')
+    
+    temp_dir = os.path.join(temp_base, upload_id, file_id)
+    final_dir = os.path.join(temp_base, upload_id)
     os.makedirs(final_dir, exist_ok=True)
     final_path = os.path.join(final_dir, filename)
     lock_path = final_path + '.lock'
@@ -495,7 +510,10 @@ def check_upload_status():
     upload_id = request.form.get('upload_id')
     file_id = request.form.get('file_id')
     
-    temp_dir = os.path.join(tempfile.gettempdir(), 'project_chunks', upload_id, file_id)
+    cache_dir = get_cache_folder()
+    temp_base = os.path.join(cache_dir, 'temp_chunks')
+    
+    temp_dir = os.path.join(temp_base, upload_id, file_id)
     if not os.path.exists(temp_dir):
         return jsonify({'uploaded_chunks': 0})
     
@@ -520,11 +538,12 @@ def delete_project(project_name):
 @bp.route('/cleanup_chunks', methods=['POST'])
 @login_required
 def cleanup_chunks():
-    temp_base = os.path.join(tempfile.gettempdir(), 'project_chunks')
+    cache_dir = get_cache_folder()
+    temp_base = os.path.join(cache_dir, 'temp_chunks')
     try:
         if os.path.exists(temp_base):
             shutil.rmtree(temp_base, ignore_errors=True)
-        os.makedirs(temp_base, mode=0o777, exist_ok=True)
+        os.makedirs(temp_base, exist_ok=True)
         logger.info("Cleaned up temporary chunk directory")
         return jsonify({'success': True})
     except Exception as e:
@@ -535,7 +554,8 @@ def cleanup_chunks():
 @login_required
 def cleanup_temp():
     """Manually clean up all temporary files older than 1 hour."""
-    temp_base = os.path.join(tempfile.gettempdir(), 'project_chunks')
+    cache_dir = get_cache_folder()
+    temp_base = os.path.join(cache_dir, 'temp_chunks')
     try:
         current_time = time.time()
         cleaned = 0
