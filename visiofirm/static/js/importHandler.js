@@ -139,7 +139,7 @@ export function initDropZone(dropZone, fileInput, fileList, dropIcon, compressMs
         showFileList(files, fileList, dropIcon, compressMsg);
     };
 
-    dropZone.addEventListener('click', () => fileInput.click());
+    //dropZone.addEventListener('click', () => fileInput.click());
 
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
