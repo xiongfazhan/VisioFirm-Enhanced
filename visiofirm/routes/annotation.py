@@ -633,8 +633,17 @@ def export_annotations(project_name):
     if not annotated_selected_images:
         return jsonify({'success': False, 'error': 'No annotated images available'}), 400
 
+    # Filter out missing files
+    existing_images = [img for img in annotated_selected_images if os.path.exists(img)]
+    missing_count = len(annotated_selected_images) - len(existing_images)
+    if missing_count > 0:
+        logger.warning(f"{missing_count} images not found on disk and skipped during export for project {project_name}")
+
+    if not existing_images:
+        return jsonify({'success': False, 'error': 'No existing annotated images found on disk'}), 400
+
     try:
-        splits = split_images(annotated_selected_images, split_choices, split_ratios)
+        splits = split_images(existing_images, split_choices, split_ratios)
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
