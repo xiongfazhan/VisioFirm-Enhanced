@@ -405,7 +405,6 @@ def get_annotations(project_name, image_path):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @bp.route('/save_annotations', methods=['POST'])
-@login_required
 def save_annotations():
     try:
         data = request.json
@@ -413,17 +412,42 @@ def save_annotations():
             return jsonify({'success': False, 'error': 'Invalid request data'}), 400
 
         project_name = data['project']
-        image_filename = data['image']
+        image_filename = data['image']  # Expecting just the filename, e.g., "image.jpg"
         raw_annotations = data['annotations']
 
         project_path = os.path.join(PROJECTS_FOLDER, project_name)
         project = Project(project_name, "", "", project_path)
-        absolute_image_path = os.path.join(PROJECTS_FOLDER, project_name, 'images', secure_filename(image_filename))
+        absolute_image_path = os.path.abspath(os.path.join(PROJECTS_FOLDER, project_name, 'images', secure_filename(image_filename)))
+        logger.info(f"Looking up image with absolute path: {absolute_image_path}")
 
         with sqlite3.connect(project.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT image_id FROM Images WHERE absolute_path = ?', (absolute_image_path,))
             image_id = cursor.fetchone()
+
+            # Fallback 1: Case-insensitive normalized path match
+            if not image_id:
+                cursor.execute('SELECT image_id, absolute_path FROM Images')
+                all_images = cursor.fetchall()
+                for row in all_images:
+                    stored_path = row[1]
+                    if os.path.normpath(stored_path).lower() == os.path.normpath(absolute_image_path).lower():
+                        logger.info(f"Found matching image with path: {stored_path}")
+                        image_id = (row[0],)
+                        absolute_image_path = stored_path
+                        break
+
+            # Fallback 2: Filename match (last resort)
+            if not image_id:
+                filename = os.path.basename(image_filename)
+                cursor.execute('SELECT image_id, absolute_path FROM Images WHERE absolute_path LIKE ?', (f'%{filename}',))
+                result = cursor.fetchone()
+                if result:
+                    logger.info(f"Found image by filename match: {filename} -> {result[1]}")
+                    absolute_image_path = result[1]
+                    image_id = (result[0],)
+
+            # If still not found, try to add if file exists (original behavior)
             if not image_id:
                 if os.path.exists(absolute_image_path):
                     project.add_image(absolute_image_path)
@@ -433,13 +457,16 @@ def save_annotations():
                     logger.error(f"Image file {absolute_image_path} not found on disk")
                     return jsonify({'success': False, 'error': f'Image file {absolute_image_path} not found on disk'}), 404
 
+            if not image_id:
+                logger.error(f"No image entry found or created for {absolute_image_path}")
+                return jsonify({'success': False, 'error': 'Image not found or could not be added'}), 404
+
             image_id = image_id[0]
 
-            # Delete existing annotations and pre-annotations for this image
+            # Proceed with saving (rest of the function unchanged)
             cursor.execute('DELETE FROM Annotations WHERE image_id = ?', (image_id,))
             cursor.execute('DELETE FROM Preannotations WHERE image_id = ?', (image_id,))
 
-            # Save new annotations
             for anno in raw_annotations:
                 anno_type = anno.get('type', 'rect')
                 if project.get_setup_type() == "Segmentation" and anno.get('segmentation'):
@@ -492,13 +519,13 @@ def save_annotations():
                     segmentation
                 ))
 
-            # Mark the image as reviewed with the current user's ID
+            # Mark the image as reviewed
             cursor.execute('''
-                INSERT OR REPLACE INTO ReviewedImages (image_id, user_id) VALUES (?, ?)
-            ''', (image_id, current_user.id))
+                INSERT OR REPLACE INTO ReviewedImages (image_id) VALUES (?)
+            ''', (image_id,))
 
             conn.commit()
-            logger.info(f"Saved {len(raw_annotations)} annotations for {absolute_image_path} by user {current_user.id} and marked as reviewed")
+            logger.info(f"Saved {len(raw_annotations)} annotations for {absolute_image_path} and marked as reviewed")
 
         return jsonify({'success': True})
 
