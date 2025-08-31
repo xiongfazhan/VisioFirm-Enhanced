@@ -70,7 +70,9 @@ visiofirm
 4. Refine labels in the interactive editor.
 5. Export your annotated dataset.
 
-Access at `http://127.0.0.1:8000` (or next available port). Projects are stored locally in `./projects/`.
+Access at `http://localhost:8000` (or next available port).
+
+The VisioFirm app uses cache directories to store settings locally.
 
 ## Usage
 
