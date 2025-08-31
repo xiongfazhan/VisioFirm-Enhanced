@@ -17,9 +17,9 @@ def find_free_port(start_port=8000):
 
 def main():
     port = find_free_port()
-    url = f"http://127.0.0.1:{port}"
+    url = f"http://localhost:{port}"
     threading.Timer(1.5, lambda: webbrowser.open(url)).start()  # Delay to let server start
-    app.run(host='127.0.0.1', port=port, debug=False)
+    app.run(host='localhost', port=port, debug=False)
 
 if __name__ == "__main__":
     main()
