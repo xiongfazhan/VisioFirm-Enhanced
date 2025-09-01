@@ -3,15 +3,35 @@ import torch
 import numpy as np
 import cv2
 from PIL import Image
-from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 from ultralytics import YOLO, SAM
 import json
 import logging
 import networkx as nx
 import clip
+import os
+import requests
+from groundingdino.util.inference import load_model, predict
+from groundingdino.datasets import transforms as T
+from visiofirm.config import WEIGHTS_FOLDER
+
+os.makedirs(WEIGHTS_FOLDER, exist_ok=True)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def download_weight(url, filename):
+    path = os.path.join(WEIGHTS_FOLDER, filename)
+    if not os.path.exists(path):
+        logger.info(f"Downloading {filename} from {url}")
+        r = requests.get(url, stream=True)
+        if r.status_code == 200:
+            with open(path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        else:
+            raise ValueError(f"Failed to download {url}")
+    return path
+
 
 class ImageProcessor:
     def __init__(
@@ -37,18 +57,44 @@ class ImageProcessor:
         self.sam2_autocast_dtype = sam2_autocast_dtype
         self.verbose = verbose
 
-        if self.model_type in ["grounding_dino_tiny", "grounding_dino_base"]:
-            dino_model_id = f"IDEA-Research/grounding-dino-{'tiny' if self.model_type == 'grounding_dino_tiny' else 'base'}"
-            self.dino_processor = AutoProcessor.from_pretrained(dino_model_id)
-            self.dino_model = AutoModelForZeroShotObjectDetection.from_pretrained(dino_model_id).to(self.device)
-        elif self.model_type == "yolo":
-            if any(keyword in yolo_model_path.lower() for keyword in ['yolo5', 'yolov5', 'y5', 'v5']):
-                self.yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', path=yolo_model_path)
+        # Known model URLs for auto-download
+        known_yolo_urls = {
+            "yolov10n.pt": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov10n.pt",
+            "yolov10s.pt": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov10s.pt",
+            "yolov10m.pt": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov10m.pt",
+            "yolov10l.pt": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov10l.pt",
+            "yolov10x.pt": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov10x.pt",
+        }
+        known_sam_urls = {
+            "sam2.1_t.pt": "https://github.com/ultralytics/assets/releases/download/v8.3.0/sam2.1_t.pt",
+        }
+
+        # Download YOLO if known
+        if self.model_type == "yolo":
+            if self.yolo_model_path in known_yolo_urls:
+                self.yolo_model_path = download_weight(known_yolo_urls[self.yolo_model_path], self.yolo_model_path)
+            if any(keyword in self.yolo_model_path.lower() for keyword in ['yolo5', 'yolov5', 'y5', 'v5']):
+                self.yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', path=self.yolo_model_path)
             else:
-                self.yolo_model = YOLO(model=yolo_model_path)
+                self.yolo_model = YOLO(model=self.yolo_model_path)
+        elif self.model_type in ["grounding_dino_tiny", "grounding_dino_base"]:
+            if self.model_type == "grounding_dino_tiny":
+                config_path = os.path.join(os.path.dirname(__file__), 'GroundingDinoConfigs', 'GroundingDINO_SwinT_OGC.py')
+                weight_url = "https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth"
+                weight_filename = "groundingdino_swint_ogc.pth"
+            else:  # grounding_dino_base
+                config_path = os.path.join(os.path.dirname(__file__), 'GroundingDinoConfigs', 'GroundingDINO_SwinB_cfg.py')
+                weight_url = "https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha2/groundingdino_swinb_cogcoor.pth"
+                weight_filename = "groundingdino_swinb_cogcoor.pth"
+            weight_path = download_weight(weight_url, weight_filename)
+            self.dino_model = load_model(config_path, weight_path)
+            self.dino_model = self.dino_model.to(self.device)
         else:
             raise ValueError(f"Invalid model_type: {model_type}. Choose 'yolo', 'grounding_dino_tiny', or 'grounding_dino_base'.")
 
+        # Download SAM if known
+        if self.sam2_model_path in known_sam_urls:
+            self.sam2_model_path = download_weight(known_sam_urls[self.sam2_model_path], self.sam2_model_path)
         self.sam2_model = SAM(self.sam2_model_path)
         if self.verbose:
             self.sam2_model.info()
@@ -66,37 +112,47 @@ class ImageProcessor:
         all_boxes = []
         all_scores = []
         all_labels = []
-
+        transform = T.Compose(
+            [
+                T.RandomResize([800], max_size=1333),
+                T.ToTensor(),
+                T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ]
+        )
+        image_transformed, _ = transform(image, None)
+        width, height = image.size
         for i in range(0, len(class_list), batch_size):
             batch_classes = class_list[i:i + batch_size]
-            inputs = self.dino_processor(images=image, text=batch_classes, return_tensors="pt").to(self.device)
-            with torch.no_grad():
-                outputs = self.dino_model(**inputs)
-            result = self.dino_processor.post_process_grounded_object_detection(
-                outputs,
-                inputs.input_ids,
-                threshold=box_threshold,
+            caption = " . ".join(batch_classes) + " ."
+            boxes_batch, logits_batch, phrases_batch = predict(
+                model=self.dino_model,
+                image=image_transformed,
+                caption=caption,
+                box_threshold=box_threshold,
                 text_threshold=text_threshold,
-                target_sizes=[image.size[::-1]]
-            )[0]
-            all_boxes.append(result["boxes"])
-            all_scores.append(result["scores"])
-            all_labels.extend(result["text_labels"])
-
+                device=self.device_str
+            )
+            # Convert cxcywh normalized to xyxy absolute
+            boxes_xyxy = torch.zeros_like(boxes_batch)
+            boxes_xyxy[:, 0] = (boxes_batch[:, 0] - boxes_batch[:, 2] / 2) * width
+            boxes_xyxy[:, 1] = (boxes_batch[:, 1] - boxes_batch[:, 3] / 2) * height
+            boxes_xyxy[:, 2] = (boxes_batch[:, 0] + boxes_batch[:, 2] / 2) * width
+            boxes_xyxy[:, 3] = (boxes_batch[:, 1] + boxes_batch[:, 3] / 2) * height
+            all_boxes.append(boxes_xyxy)
+            all_scores.append(logits_batch)
+            all_labels.extend(phrases_batch)
         if all_boxes:
             combined_boxes = torch.cat(all_boxes, dim=0)
             combined_scores = torch.cat(all_scores, dim=0)
         else:
             combined_boxes = torch.empty((0, 4), device=self.device)
             combined_scores = torch.empty((0,), device=self.device)
-
         clean_labels = []
         clean_class_set = {c.replace("a ", "").replace("an ", "").strip().lower() for c in class_list}
         for label in all_labels:
             clean_label = label.replace("a ", "").replace("an ", "").replace("photo ", "").replace("picture ", "").strip().lower()
             matched_class = next((c for c in clean_class_set if clean_label in c or c in clean_label), clean_label)
             clean_labels.append(matched_class)
-
         valid_indices = [
             i for i, l in enumerate(clean_labels)
             if l and l not in ["a", "an", "photo", "picture"] and l in clean_class_set
@@ -104,7 +160,6 @@ class ImageProcessor:
         combined_boxes = combined_boxes[valid_indices]
         combined_scores = combined_scores[valid_indices]
         combined_labels = [clean_labels[i] for i in valid_indices]
-
         return {
             "boxes": combined_boxes,
             "scores": combined_scores,
@@ -117,7 +172,6 @@ class ImageProcessor:
         for user_class in class_list:
             user_class_clean = user_class.replace("a ", "").replace("an ", "").replace("photo of ", "").replace("picture of ", "").strip()
             class_mapping[user_class_clean.lower()] = user_class_clean
-
         if any(keyword in self.yolo_model_path.lower() for keyword in ['yolo5', 'yolov5', 'y5', 'v5']):
             results = self.yolo_model(image)
             boxes = []
@@ -147,7 +201,6 @@ class ImageProcessor:
                     boxes.append([x1.item(), y1.item(), x2.item(), y2.item()])
                     scores.append(conf.item())
                     labels.append(user_class_name)
-
         return {
             "boxes": np.array(boxes, dtype=np.float32),
             "scores": np.array(scores, dtype=np.float32),
@@ -157,21 +210,20 @@ class ImageProcessor:
     def _run_sam2(self, image: Image.Image, boxes: np.ndarray) -> np.ndarray:
         if boxes.size == 0:
             return np.zeros((0, image.size[1], image.size[0]), dtype=np.float32)
-
         multi_bboxes = [[int(x1), int(y1), int(x2), int(y2)] for x1, y1, x2, y2 in boxes]
-        
+       
         with torch.inference_mode(), torch.autocast(self.device_str, dtype=self.sam2_autocast_dtype):
             results = self.sam2_model.predict(image, bboxes=multi_bboxes, device=self.device)
-            
+           
             if not results:
                 return np.zeros((0, image.size[1], image.size[0]), dtype=np.float32)
-            
+           
             res = results[0]
             if res.masks is not None and len(res.masks.data) > 0:
                 masks = res.masks.data.cpu().numpy().astype(np.float32)
             else:
                 masks = np.zeros((len(multi_bboxes), image.size[1], image.size[0]), dtype=np.float32)
-        
+       
         return masks
 
     def process_image(
@@ -184,37 +236,31 @@ class ImageProcessor:
     ) -> dict:
         box_threshold = box_threshold or self.box_threshold
         text_threshold = text_threshold or self.text_threshold
-
         prompts, clean_labels = self._parse_classes(classes_str)
         if not prompts:
             raise ValueError("No valid class prompts found.")
-
         if self.model_type in ["grounding_dino_tiny", "grounding_dino_base"]:
             result = self._run_grounding_dino(image, prompts, box_threshold, text_threshold)
         else:
             result = self._run_yolo(image, prompts, box_threshold)
-
         if isinstance(result["boxes"], torch.Tensor):
             result["boxes"] = result["boxes"].cpu().numpy()
         if isinstance(result["scores"], torch.Tensor):
             result["scores"] = result["scores"].cpu().numpy()
-
         boxes = result["boxes"]
         scores = result["scores"]
         labels = result["labels"]
-
         if mode == "BoundingBox":
             return {"boxes": boxes, "scores": scores, "labels": labels}
-
         elif mode == "Segmentation":
             masks = self._run_sam2(image, boxes)
             return {"boxes": boxes, "scores": scores, "labels": labels, "masks": masks}
-
         else:
             raise ValueError(f"Invalid mode: {mode}. Choose 'BoundingBox' or 'Segmentation'.")
 
     def __call__(self, *args, **kwargs):
         return self.process_image(*args, **kwargs)
+
 
 class PreAnnotator:
     def __init__(
@@ -231,41 +277,39 @@ class PreAnnotator:
         valid_models = ["yolo", "grounding_dino_tiny", "grounding_dino_base"]
         if model_type not in valid_models:
             raise ValueError(f"Invalid model_type: {model_type}. Choose from {valid_models}.")
-        
+       
         self.model_type = model_type
         self.device = device
         self.config_db_path = config_db_path
         self.box_threshold = box_threshold
         self.verbose = verbose
-
         # Database connection
         self.conn = sqlite3.connect(self.config_db_path)
         cursor = self.conn.cursor()
-        
+       
         # Verify database structure
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='Project_Configuration'")
         if not cursor.fetchone():
             raise ValueError("Project_Configuration table does not exist in the database.")
-
         cursor.execute("SELECT setup_type FROM Project_Configuration")
         result = cursor.fetchone()
         if not result:
             raise ValueError("No setup type found in Project_Configuration table.")
         self.setup_type = result[0]
-        
+       
         # Load classes
         cursor.execute("SELECT class_name FROM Classes")
         self.classes = [str(row[0]) for row in cursor.fetchall()]
         if not self.classes:
             logger.warning("No classes found in Classes table. May lead to empty detections.")
         self.classes_str = ", ".join(self.classes)
-        
+       
         # Load images
         cursor.execute("SELECT image_id, absolute_path FROM Images")
         self.images = cursor.fetchall()
         if not self.images:
             raise ValueError("No images found in Images table.")
-        
+       
         # Initialize image processor
         self.image_processor = ImageProcessor(
             model_type=self.model_type,
@@ -275,7 +319,6 @@ class PreAnnotator:
             box_threshold=self.box_threshold,
             verbose=self.verbose
         )
-
         # Load CLIP model for YOLO
         if self.model_type == "yolo":
             self.clip_model, self.clip_preprocess = clip.load("ViT-B/32", device=self.device)
@@ -285,20 +328,15 @@ class PreAnnotator:
 
     def _simplify_contour(self, contour, epsilon_factor=0.002):
         min_points_for_simplification = 15
-
         if len(contour) < 3:
             logger.debug(f"Contour has fewer than 3 points; skipping")
             return None
-
         flattened_original = contour.reshape(-1, 2).astype(float).flatten().tolist()
-
         if len(contour) <= min_points_for_simplification:
             return flattened_original
-
         perimeter = cv2.arcLength(contour, closed=True)
         epsilon = epsilon_factor * perimeter
         approx = cv2.approxPolyDP(contour, epsilon, closed=True)
-
         if len(approx) >= 3:
             flattened = approx.reshape(-1, 2).astype(float).flatten().tolist()
             return flattened
@@ -338,7 +376,6 @@ class PreAnnotator:
             "Oriented Bounding Box": "BoundingBox"
         }
         mode = setup_to_mode.get(self.setup_type, "BoundingBox")
-
         cursor = self.conn.cursor()
         for image_id, image_path in self.images:
             try:
@@ -353,10 +390,9 @@ class PreAnnotator:
                 if cursor.fetchone()[0]:
                     logger.info(f"Skipping image {image_path} (image_id: {image_id}) as it already has preannotations or annotations.")
                     continue
-
                 logger.info(f"Processing image: {image_path} (image_id: {image_id})")
                 image = Image.open(image_path).convert("RGB")
-                
+               
                 # Process image
                 results = self.image_processor.process_image(
                     image=image,
@@ -364,10 +400,8 @@ class PreAnnotator:
                     mode=mode,
                     box_threshold=self.box_threshold
                 )
-
                 num_detections = len(results["scores"])
                 logger.info(f"Detected {num_detections} objects for image {image_path}")
-
                 # Map labels to original class names
                 class_lower_to_original = {cls.lower(): cls for cls in self.classes}
                 mapped_labels = []
@@ -377,19 +411,16 @@ class PreAnnotator:
                     if label_lower not in class_lower_to_original:
                         logger.warning(f"No matching class found for label '{label}' in {image_path}; using original label")
                 results["labels"] = mapped_labels
-
                 # Post-process annotations
                 if mode in ["BoundingBox", "Segmentation"]:
                     boxes = results["boxes"]
                     scores = results["scores"]
                     labels = results["labels"]
                     masks = results.get("masks", [None] * len(boxes))
-
                     annotations = [
                         {"box": boxes[i], "score": scores[i], "label": labels[i], "mask": masks[i]}
                         for i in range(len(boxes))
                     ]
-
                     if self.model_type == "yolo":
                         # Cluster overlapping annotations
                         G = nx.Graph()
@@ -398,13 +429,11 @@ class PreAnnotator:
                                 if self.compute_iou(annotations[i]["box"], annotations[j]["box"]) > 0.9:
                                     G.add_edge(i, j)
                         clusters = list(nx.connected_components(G))
-
                         # Include singletons
                         all_indices = set(range(len(annotations)))
                         cluster_indices = set.union(*clusters) if clusters else set()
                         singletons = all_indices - cluster_indices
                         clusters.extend([{i} for i in singletons])
-
                         # Process clusters
                         kept_annotations = []
                         for cluster in clusters:
@@ -428,7 +457,6 @@ class PreAnnotator:
                                 kept_annotations.append(best_anno)
                     else:
                         kept_annotations = annotations
-
                     # Insert annotations into database
                     inserted_count = 0
                     for anno in kept_annotations:
@@ -471,7 +499,6 @@ class PreAnnotator:
                                         break
                                     mask_filled = mask_filled_new
                                     kernel_size += 2
-
                                 contours, _ = cv2.findContours(mask_filled, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                                 if contours:
                                     largest_contour = max(contours, key=cv2.contourArea)
@@ -490,10 +517,8 @@ class PreAnnotator:
                                     logger.debug(f"Skipped empty contours for {anno['label']} in {image_path}")
                             else:
                                 logger.debug(f"Skipped empty mask for {anno['label']} in {image_path}")
-
                     self.conn.commit()
                     logger.info(f"Inserted {inserted_count} unique annotations for image {image_path}")
-
             except Exception as e:
                 logger.error(f"Error processing image {image_path}: {str(e)}")
                 continue
