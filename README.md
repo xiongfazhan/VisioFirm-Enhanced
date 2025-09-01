@@ -6,6 +6,11 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/OschAI/VisioFirm/blob/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/visiofirm.svg)](https://pypi.org/project/visiofirm/) <!-- Update if published -->
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+-------
+**⚠** A new release has just dropped. `VisioFirm 0.1.1` has now a different GroundingDINO dependency which is tied directly to the original [Grounding DINO GitHub](https://github.com/IDEA-Research/GroundingDINO) through the pip library 'groundingdino-py' thanks to [@giswqs](https://github.com/giswqs).
+
+If you prefer the HF transformers-based library you can install the version from main branch [main branch](https://github.com/OschAI/VisioFirm/tree/main).
+-------
 
 **VisioFirm** is an open-source, AI-powered image annotation tool designed to accelerate labeling for computer vision tasks like object detection, oriented bounding boxes (OBB), and segmentation. Built for speed and simplicity, it leverages state-of-the-art models for semi-automated pre-annotations, allowing you to focus on refining rather than starting from scratch. Whether you're preparing datasets for YOLO, SAM, or custom models, VisioFirm streamlines your workflow with a intuitive web interface and powerful backend.
 
