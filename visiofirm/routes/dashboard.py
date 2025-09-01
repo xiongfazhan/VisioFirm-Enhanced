@@ -26,11 +26,13 @@ bp = Blueprint('dashboard', __name__)
 def index():
     projects = []
     for project_name in os.listdir(PROJECTS_FOLDER):
+        if project_name in ['temp_chunks', 'weights']:
+            continue
         project_path = os.path.join(PROJECTS_FOLDER, project_name)
-        if os.path.isdir(project_path) and project_name != 'temp_chunks':
+        if os.path.isdir(project_path):
             db_path = os.path.join(project_path, 'config.db')
+            creation_date = None
             if os.path.exists(db_path):
-                creation_date = None
                 try:
                     with sqlite3.connect(db_path) as conn:
                         cursor = conn.cursor()
@@ -39,20 +41,20 @@ def index():
                         creation_date = result[0] if result else None
                 except Exception as e:
                     logger.error(f"Error fetching creation date for {project_name}: {e}")
-                
-                images_path = os.path.join(project_path, 'images')
-                image_files = [
-                    f for f in os.listdir(images_path)
-                    if os.path.isfile(os.path.join(images_path, f)) and os.path.splitext(f)[1].lower() in VALID_IMAGE_EXTENSIONS
-                ] if os.path.exists(images_path) else []
-                projects.append({
-                    'name': project_name,
-                    'images': [
-                        os.path.join('/projects', project_name, 'images', img)
-                        for img in image_files[:3]
-                    ],
-                    'creation_date': creation_date
-                })
+            
+            images_path = os.path.join(project_path, 'images')
+            image_files = [
+                f for f in os.listdir(images_path)
+                if os.path.isfile(os.path.join(images_path, f)) and os.path.splitext(f)[1].lower() in VALID_IMAGE_EXTENSIONS
+            ] if os.path.exists(images_path) else []
+            projects.append({
+                'name': project_name,
+                'images': [
+                    os.path.join('/projects', project_name, 'images', img)
+                    for img in image_files[:3]
+                ],
+                'creation_date': creation_date
+            })
     
     projects.sort(key=lambda p: p['creation_date'] or '', reverse=True)
     return render_template('index.html', projects=projects)
