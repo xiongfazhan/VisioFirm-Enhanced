@@ -52,7 +52,7 @@ VisioFirm is easy to install via pip from GitHub (PyPI coming soon!).
 It was tested with `Python 3.10+`.
 
 ```bash
-pip install git+https://github.com/OschAI/VisioFirm.git
+pip install visiofirm==0.1.1
 ```
 
 For development or editable install (from a cloned repo):
