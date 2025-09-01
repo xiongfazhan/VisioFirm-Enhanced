@@ -19,3 +19,4 @@ def get_db_path():
 
 PROJECTS_FOLDER = get_cache_folder()
 VALID_IMAGE_EXTENSIONS = {'.webp', '.jpg', '.jpeg', '.JPG', '.JPEG', '.png', '.avif'}
+WEIGHTS_FOLDER = os.path.join(get_cache_folder(), 'weights')
