@@ -85,7 +85,7 @@ function updateBulkActionsState() {
     const hasSelections = checkboxes.length > 0;
     document.getElementById('download-btn').disabled = !hasSelections;
     document.getElementById('delete-images-btn').disabled = !hasSelections;
-    // document.getElementById('export-btn').disabled = !hasSelections;  // Remove or comment this line
+    document.getElementById('export-btn').disabled = !hasSelections;
     const totalCheckboxes = document.querySelectorAll('.image-checkbox').length;
     const selectAllBtn = document.getElementById('select-all-btn');
     if (checkboxes.length === totalCheckboxes && totalCheckboxes > 0) {
@@ -782,7 +782,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    confirmExportBtn.addEventListener('click', () => {
+    confirmExportBtn.addEventListener('click', async () => {
         if (!selectedFormat) {
             alert('Please select an export format');
             return;
@@ -810,27 +810,37 @@ document.addEventListener('DOMContentLoaded', function() {
             splitRatios.train = 100;
         }
 
-        // Create and submit form instead of fetch
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/annotation/export/' + projectName;
+        try {
+            const response = await fetch('/annotation/export/' + projectName, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    format: selectedFormat,
+                    images: imagePaths,
+                    split_choices: splitChoices,
+                    split_ratios: splitRatios
+                })
+            });
 
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'export_data';  // Renamed to avoid conflict with 'data'
-        input.value = JSON.stringify({
-            format: selectedFormat,
-            images: imagePaths,
-            split_choices: splitChoices,
-            split_ratios: splitRatios
-        });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to export annotations');
+            }
 
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-
-        exportModal.style.display = 'none';
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${projectName}_${selectedFormat}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            exportModal.style.display = 'none';
+        } catch (error) {
+            console.error('Export error:', error);
+            alert(`Failed to export annotations: ${error.message}`);
+        }
     });
 
     const lazyImages = document.querySelectorAll('.lazy-load');

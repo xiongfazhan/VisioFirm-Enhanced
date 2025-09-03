@@ -618,35 +618,22 @@ def download_images():
 @bp.route('/export/<project_name>', methods=['POST'])
 @login_required
 def export_annotations(project_name):
-    if request.is_json:
-        data = request.json
-    else:
-        data_str = request.form.get('export_data')
-        if data_str:
-            data = json.loads(data_str)
-        else:
-            return jsonify({'success': False, 'error': 'No data provided'}), 400
-
+    data = request.json
     format_type = data.get('format')
     selected_images = data.get('images', [])
     split_choices = data.get('split_choices', ['train'])
     split_ratios = data.get('split_ratios', {'train': 100, 'test': 0, 'val': 0})
-
-
-    # Log incoming parameters
-    logger.info(f'Export request for project: {project_name}')
-    logger.info(f'Format type: {format_type}')
-    logger.info(f'Selected images: {selected_images}')
-    logger.info(f'Split choices: {split_choices}')
-    logger.info(f'Split ratios: {split_ratios}')
-
+    
     if not format_type:
         return jsonify({'success': False, 'error': 'Format not specified'}), 400
+
     project_path = os.path.join(PROJECTS_FOLDER, project_name)
     if not os.path.exists(project_path):
         return jsonify({'success': False, 'error': 'Project not found'}), 404
+
     project = Project(project_name, "", "", project_path)
     setup_type = project.get_setup_type()
+
     if setup_type == "Oriented Bounding Box" and format_type not in ['CSV', 'YOLO']:
         return jsonify({'success': False, 'error': 'Oriented Bounding Box can only be exported as CSV or YOLO'}), 400
     elif setup_type == "Segmentation" and format_type not in ['COCO', 'YOLO']:
@@ -660,6 +647,7 @@ def export_annotations(project_name):
             JOIN Annotations a ON i.image_id = a.image_id
         ''')
         annotated_images = [row[0] for row in cursor.fetchall()]
+
         cursor.execute('SELECT description FROM Project_Configuration WHERE project_name = ?', (project_name,))
         project_description = cursor.fetchone()[0] or ""
 
@@ -683,37 +671,36 @@ def export_annotations(project_name):
 
     try:
         splits = split_images(existing_images, split_choices, split_ratios)
-        logger.info(f'Split images: {splits}')
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
     try:
         if format_type == 'COCO':
             export_data = generate_coco_export(
-                project,
-                splits,
-                setup_type,
-                project_name,
+                project, 
+                splits, 
+                setup_type, 
+                project_name, 
                 project_description
             )
         elif format_type == 'YOLO':
             export_data = generate_yolo_export(
-                project,
-                splits,
-                setup_type,
-                project_name,
+                project, 
+                splits, 
+                setup_type, 
+                project_name, 
                 project_description
             )
         elif format_type == 'PASCAL_VOC':
             export_data = generate_pascal_voc_export(
-                project,
-                splits,
+                project, 
+                splits, 
                 setup_type
             )
         elif format_type == 'CSV':
             export_data = generate_csv_export(
-                project,
-                splits,
+                project, 
+                splits, 
                 setup_type
             )
         else:
@@ -726,9 +713,7 @@ def export_annotations(project_name):
             download_name=f'{project_name}_{format_type}.zip'
         )
     except Exception as e:
-        logger.error(f'Error during export generation: {e}')
         return jsonify({'success': False, 'error': f'Export failed: {str(e)}'}), 500
-
     
 @bp.route('/check_gpu', methods=['GET'])
 def check_gpu():
