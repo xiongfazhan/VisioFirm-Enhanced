@@ -5,7 +5,7 @@ with open('README.md', 'r', encoding='utf-8') as f:
 
 setup(
     name='visiofirm',
-    version='0.1.1',
+    version='0.1.2',
     author='Safouane El Ghazouali', 
     author_email='safouane.elghazouali@gmail.com',
     description='Fast almost fully automated image annotation tool for computer vision tasks detection, oriented bounding boxes and segmentation.',
