@@ -34,7 +34,7 @@ WELCOME TO
                                                  
  
 Currently running the version:
-VisioFirm v0.1.3
+VisioFirm v0.1.4
 
 Stay updated by visiting our GitHub Repository https://github.com/OschAI/VisioFirm
 """.format(port=port))

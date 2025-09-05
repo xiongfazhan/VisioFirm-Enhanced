@@ -8,7 +8,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 -------
 > [!IMPORTANT]
-> A new release has just dropped. `VisioFirm 0.1.3` as a correction to `0.1.1` and `0.1.2` which had some bugs and export trouble via SSH. The new releases have now a different GroundingDINO dependency which is tied directly to the original [Grounding DINO GitHub](https://github.com/IDEA-Research/GroundingDINO) through the pip library 'groundingdino-py' thanks to [@giswqs](https://github.com/giswqs).
+> A new release has just dropped. `VisioFirm 0.1.4` as a correction to `0.1.1` and `0.1.2` which had some bugs and export trouble via SSH. The new releases have now a different GroundingDINO dependency which is tied directly to the original [Grounding DINO GitHub](https://github.com/IDEA-Research/GroundingDINO) through the pip library 'groundingdino-py' thanks to [@giswqs](https://github.com/giswqs).
 
 > [!NOTE]
 >If you prefer the HF transformers-based library you can install the version from main branch [main branch](https://github.com/OschAI/VisioFirm/tree/main) via the command line `pip install visiofirm==0.1.0`.
