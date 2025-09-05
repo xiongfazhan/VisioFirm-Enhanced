@@ -4,11 +4,11 @@
 
 [![GitHub Stars](https://img.shields.io/github/stars/OschAI/VisioFirm?style=social)](https://github.com/OschAI/VisioFirm/stargazers)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/OschAI/VisioFirm/blob/main/LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/visiofirm.svg)](https://pypi.org/project/visiofirm/) <!-- Update if published -->
+[![PyPI](https://img.shields.io/pypi/v/visiofirm.svg)](https://pypi.org/project/visiofirm/) 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 -------
 > [!IMPORTANT]
-> A new release has just dropped. `VisioFirm 0.1.3` as a correction to `0.1.1` and `0.1.2` which had some bugs and export trouble via SSH. The new releases have now a different GroundingDINO dependency which is tied directly to the original [Grounding DINO GitHub](https://github.com/IDEA-Research/GroundingDINO) through the pip library 'groundingdino-py' thanks to [@giswqs](https://github.com/giswqs).
+> A new release has just dropped. `VisioFirm 0.1.4` as a correction to `0.1.1` and `0.1.2` which had some bugs and export trouble via SSH. The new releases have now a different GroundingDINO dependency which is tied directly to the original [Grounding DINO GitHub](https://github.com/IDEA-Research/GroundingDINO) through the pip library 'groundingdino-py' thanks to [@giswqs](https://github.com/giswqs).
 
 > [!NOTE]
 >If you prefer the HF transformers-based library you can install the version from main branch [main branch](https://github.com/OschAI/VisioFirm/tree/main) via the command line `pip install visiofirm==0.1.0`.
@@ -82,7 +82,9 @@ The VisioFirm app uses cache directories to store settings locally.
 ## Usage
 
 ### Pre-Annotation with AI
+
 VisioFirm uses advanced models for initial labels:
+
 - **YOLOv10**: Fast detection.
 - **SAM2**: Precise segmentation.
 - **Grounding DINO**: Zero-shot detection via text prompts.
@@ -90,9 +92,11 @@ VisioFirm uses advanced models for initial labels:
 Models auto-download on first run (stored in current dir or cache). For offline prep:
 
 ### Frontend Customization
+
 The web interface (Flask + JS) supports hotkeys, undo/redo, and zoom. Edit `static/js/sam.js` for browser SAM tweaks.
 
 ### Exporting Data
+
 From the dashboard, export to JSON, TXT (YOLO format), or images with masks.
 
 ## Community & Support
