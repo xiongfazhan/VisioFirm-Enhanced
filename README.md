@@ -8,7 +8,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 -------
 > [!IMPORTANT]
-> A new release has just dropped. `VisioFirm 0.1.2` as a correction to `0.1.1` which had export trouble via SSH. The new releases have now a different GroundingDINO dependency which is tied directly to the original [Grounding DINO GitHub](https://github.com/IDEA-Research/GroundingDINO) through the pip library 'groundingdino-py' thanks to [@giswqs](https://github.com/giswqs).
+> A new release has just dropped. `VisioFirm 0.1.3` as a correction to `0.1.1` and `0.1.2` which had some bugs and export trouble via SSH. The new releases have now a different GroundingDINO dependency which is tied directly to the original [Grounding DINO GitHub](https://github.com/IDEA-Research/GroundingDINO) through the pip library 'groundingdino-py' thanks to [@giswqs](https://github.com/giswqs).
 
 > [!NOTE]
 >If you prefer the HF transformers-based library you can install the version from main branch [main branch](https://github.com/OschAI/VisioFirm/tree/main) via the command line `pip install visiofirm==0.1.0`.
@@ -52,7 +52,7 @@ VisioFirm is easy to install via pip from GitHub (PyPI coming soon!).
 It was tested with `Python 3.10+`.
 
 ```bash
-pip install visiofirm==0.1.2
+pip install -U visiofirm
 ```
 
 For development or editable install (from a cloned repo):
@@ -76,8 +76,6 @@ visiofirm
 3. For easy-to-detect object run AI pre-annotation (select model: YOLO, Grounding DINO).
 4. Refine labels in the interactive editor.
 5. Export your annotated dataset.
-
-Access at `http://localhost:8000` (or next available port).
 
 The VisioFirm app uses cache directories to store settings locally.
 
