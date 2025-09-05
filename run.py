@@ -2,11 +2,22 @@ import socket
 import threading
 import webbrowser
 import uvicorn
-from asgiref.wsgi import WsgiToAsgi
+from asgiref.wsgi import WsgiToAsgiInstance, WsgiToAsgi
+from asgiref.sync import sync_to_async
 from visiofirm import create_app
 
+class CustomWsgiToAsgiInstance(WsgiToAsgiInstance):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sync_to_async = sync_to_async(thread_sensitive=False)
+
+class CustomWsgiToAsgi(WsgiToAsgi):
+    async def __call__(self, scope, receive, send):
+        instance = CustomWsgiToAsgiInstance(self.wsgi_application)
+        await instance(scope, receive, send)
+
 app = create_app()
-asgi_app = WsgiToAsgi(app)
+asgi_app = CustomWsgiToAsgi(app)
 
 def find_free_port(start_port=8000):
     port = start_port
@@ -17,7 +28,6 @@ def find_free_port(start_port=8000):
                 return port
             except OSError:
                 port += 1  # Increment port and try again
-
 def main():
     port = find_free_port()
     url = f"http://localhost:{port}"
