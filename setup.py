@@ -34,6 +34,7 @@ setup(
         'groundingdino-py',
         'uvicorn==0.32.0',
         'asgiref==3.8.1',
+        'waitress==3.0.2',
     ],
     entry_points={
         'console_scripts': [
