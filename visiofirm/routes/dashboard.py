@@ -1,5 +1,10 @@
 import logging
-from flask import Blueprint, render_template, request, jsonify, current_app
+from flask import (
+    Blueprint, 
+    render_template, 
+    request,
+    jsonify, 
+    current_app)
 from flask_login import login_required
 from werkzeug.utils import secure_filename
 import os
@@ -11,6 +16,7 @@ import sqlite3
 from filelock import FileLock
 import time
 import psutil
+import errno
 from visiofirm.config import PROJECTS_FOLDER, VALID_IMAGE_EXTENSIONS, get_cache_folder
 from visiofirm.models.project import Project
 from visiofirm.utils import CocoAnnotationParser, YoloAnnotationParser, NameMatcher, is_valid_image
@@ -443,20 +449,20 @@ def upload_chunk():
 @login_required
 def assemble_file():
     import hashlib
-    
+    from shutil import copyfileobj  # For streaming copy
+
+    # Parse form data (compatible with uploads)
     upload_id = request.form.get('upload_id')
     file_id = request.form.get('file_id')
-    total_chunks = int(request.form.get('total_chunks'))
+    total_chunks = int(request.form.get('total_chunks', 0))
     filename = secure_filename(request.form.get('filename'))
     expected_hash = request.form.get('file_hash', '')
 
-    if not all([upload_id, file_id, filename]):
+    if not all([upload_id, file_id, filename, total_chunks]):
         return jsonify({'error': 'Missing assembly parameters'}), 400
 
-    # Change to user cache-based temp dir
     cache_dir = get_cache_folder()
     temp_base = os.path.join(cache_dir, 'temp_chunks')
-    
     temp_dir = os.path.join(temp_base, upload_id, file_id)
     final_dir = os.path.join(temp_base, upload_id)
     os.makedirs(final_dir, exist_ok=True)
@@ -466,46 +472,73 @@ def assemble_file():
     try:
         with FileLock(lock_path):
             start_time = time.time()
-            logger.info(f"Starting assembly for {filename} with {total_chunks} chunks")
-            # Check disk space for final file
+            logger.info(f"Starting assembly for {filename} (ID: {file_id}) with {total_chunks} chunks")
+
+            # Disk space check
             total, used, free = shutil.disk_usage(os.path.dirname(final_path))
-            estimated_size = sum(os.path.getsize(os.path.join(temp_dir, f'chunk_{i}')) 
-                               for i in range(total_chunks) if os.path.exists(os.path.join(temp_dir, f'chunk_{i}')))
-            if free < estimated_size:
-                logger.error(f"Insufficient disk space for {filename}: {free} bytes available, {estimated_size} bytes needed")
-                return jsonify({'error': 'Server error: Insufficient disk space for file assembly'}), 500
-            # Log memory usage
+            estimated_size = sum(os.path.getsize(os.path.join(temp_dir, f'chunk_{i}'))
+                                 for i in range(total_chunks) if os.path.exists(os.path.join(temp_dir, f'chunk_{i}')))
+            if free < estimated_size * 1.1:  # Add 10% buffer for safety
+                logger.error(f"Insufficient disk space for {filename}: {free / (1024**3):.2f} GB available, "
+                             f"{estimated_size / (1024**3):.2f} GB needed")
+                return jsonify({'error': 'Insufficient disk space for file assembly'}), 507  # 507 Insufficient Storage
+
+            # Log system resources
             memory = psutil.virtual_memory()
-            logger.info(f"System resources: Disk {free / (1024**3):.2f} GB available, Memory {memory.available / (1024**3):.2f} GB available")
+            logger.info(f"System resources: Disk {free / (1024**3):.2f} GB available, "
+                        f"Memory {memory.available / (1024**3):.2f} GB available")
 
             with open(final_path, 'wb') as f:
                 for i in range(total_chunks):
                     chunk_path = os.path.join(temp_dir, f'chunk_{i}')
                     if not os.path.exists(chunk_path):
                         logger.error(f"Missing chunk {i} for {filename}")
-                        return jsonify({'error': f'Missing chunk {i}'}), 400
-                    chunk_size = os.path.getsize(chunk_path)
-                    logger.info(f"Reading chunk {i} for {filename}, size: {chunk_size} bytes")
-                    with open(chunk_path, 'rb') as chunk_file:
-                        f.write(chunk_file.read())
-                    logger.info(f"Assembled chunk {i}/{total_chunks} for {filename}")
+                        raise FileNotFoundError(f'Missing chunk {i}')
 
+                    chunk_size = os.path.getsize(chunk_path)
+                    logger.info(f"Assembling chunk {i}/{total_chunks} for {filename}, size: {chunk_size} bytes")
+
+                    with open(chunk_path, 'rb') as chunk_file:
+                        copyfileobj(chunk_file, f)  # Stream copy to reduce memory usage
+
+                    os.remove(chunk_path)  # Clean up chunk immediately to free space
+
+            # Hash verification
             if expected_hash:
                 with open(final_path, 'rb') as f:
-                    assembled_hash = hashlib.md5(f.read()).hexdigest()
+                    hasher = hashlib.md5()
+                    while chunk := f.read(4096):  # Stream hash computation
+                        hasher.update(chunk)
+                    assembled_hash = hasher.hexdigest()
+
                 if assembled_hash != expected_hash:
                     os.remove(final_path)
                     logger.error(f"Hash mismatch for {filename}: expected {expected_hash}, got {assembled_hash}")
                     return jsonify({'error': 'File corrupted during assembly (hash mismatch)'}), 400
 
             elapsed_time = time.time() - start_time
-            logger.info(f"File {filename} assembled at {final_path}, size: {os.path.getsize(final_path)} bytes, took {elapsed_time:.2f} seconds")
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            return jsonify({'success': True})
-    except Exception as e:
-        logger.error(f"Error assembling file {filename}: {e}")
-        return jsonify({'error': f'Assembly failed: {str(e)}'}), 500
+            final_size = os.path.getsize(final_path)
+            logger.info(f"File {filename} assembled at {final_path}, size: {final_size} bytes, took {elapsed_time:.2f} seconds")
 
+            # Final cleanup (remove empty temp_dir)
+            try:
+                os.rmdir(temp_dir)
+            except OSError as e:
+                if e.errno != errno.ENOTEMPTY:  # Ignore if not empty (shouldn't happen)
+                    logger.warning(f"Cleanup warning for {temp_dir}: {str(e)}")
+
+            return jsonify({'success': True, 'file_path': final_path})
+
+    except FileNotFoundError as e:
+        logger.error(f"Assembly failed for {filename}: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+    except OSError as e:
+        logger.error(f"OS error during assembly of {filename}: {str(e)}")
+        return jsonify({'error': 'Server storage error'}), 500
+    except Exception as e:
+        logger.error(f"Unexpected error assembling {filename}: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Assembly failed due to server error'}), 500
+        
 @bp.route('/check_upload_status', methods=['POST'])
 @login_required
 def check_upload_status():
