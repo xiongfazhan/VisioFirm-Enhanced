@@ -75,7 +75,7 @@ def ai_preannotator_config():
                 else:
                     raise ValueError("Invalid mode")
 
-                # Run the pre-annotation process
+                # pre-annotation process
                 proc.run_inferences()
                 preannotation_status[project_name] = 'completed'
                 preannotation_progress[project_name] = 100
@@ -84,7 +84,7 @@ def ai_preannotator_config():
                 preannotation_status[project_name] = 'failed'
                 preannotation_progress[project_name] = 0
 
-        # Start the background thread with parameters
+        # start the background thread with parameters
         if mode == 'zero-shot':
             dino_model = request.form.get('dino_model', 'tiny')
             thread = threading.Thread(
@@ -141,14 +141,14 @@ def blind_trust():
         if not os.path.exists(config_db_path):
             return jsonify({'success': False, 'error': 'Project not found'}), 404
 
-        # Capture user_id from the current user
+        # capture user_id from the current user
         user_id = current_user.id
 
-        # Set initial status and progress
+        # set initial status and progress
         blind_trust_status[project_name] = 'running'
         blind_trust_progress[project_name] = 0
 
-        # Define the background task
+        # background task
         def run_blind_trust(project_name, confidence_threshold, config_db_path, user_id):
             try:
                 with sqlite3.connect(config_db_path) as conn:
@@ -197,7 +197,6 @@ def blind_trust():
                 blind_trust_status[project_name] = 'failed'
                 blind_trust_progress[project_name] = 0
 
-        # Start the background thread with all required arguments
         thread = threading.Thread(
             target=run_blind_trust,
             args=(project_name, confidence_threshold, config_db_path, user_id)
@@ -241,7 +240,7 @@ def annotation(project_name):
         image_annotators = {}
         with sqlite3.connect(project.db_path) as conn:
             cursor = conn.cursor()
-            # Ensure ReviewedImages table exists
+
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS ReviewedImages (
                     image_id INTEGER PRIMARY KEY,
@@ -250,7 +249,6 @@ def annotation(project_name):
                 )
             ''')
             
-            # Fetch annotated_images: images with annotations or reviewed
             cursor.execute('''
                 SELECT i.absolute_path
                 FROM Images i
@@ -412,7 +410,7 @@ def save_annotations():
             return jsonify({'success': False, 'error': 'Invalid request data'}), 400
 
         project_name = data['project']
-        image_filename = data['image']  # Expecting just the filename, e.g., "image.jpg"
+        image_filename = data['image']  # expects just the filename, e.g., "image.jpg"
         raw_annotations = data['annotations']
 
         project_path = os.path.join(PROJECTS_FOLDER, project_name)
@@ -584,9 +582,10 @@ def delete_images():
 @bp.route('/download_images', methods=['POST'])
 @login_required
 def download_images():
-    data = request.json
+    data = request.get_json()
     project_name = data.get('project')
     filenames = data.get('images', [])
+    save_path = data.get('save_path')
 
     if not project_name or not filenames:
         return jsonify({'success': False, 'error': 'Project name and image list are required'}), 400
@@ -607,6 +606,15 @@ def download_images():
             else:
                 logger.warning(f"File not found: {file_path}")
 
+    if save_path:
+        os.makedirs(save_path, exist_ok=True)
+        zip_filename = f'{project_name}_images.zip'
+        zip_path = os.path.join(save_path, zip_filename)
+        with open(zip_path, 'wb') as f:
+            f.write(mem_zip.getvalue())
+        mem_zip.close()
+        return jsonify({'success': True, 'saved_file': zip_path})
+
     mem_zip.seek(0)
     return send_file(
         mem_zip,
@@ -619,7 +627,7 @@ def download_images():
 @login_required
 def export_annotations(project_name):
     if request.is_json:
-        data = request.json
+        data = request.get_json()
     else:
         data_str = request.form.get('export_data')
         if data_str:
@@ -631,6 +639,7 @@ def export_annotations(project_name):
     selected_images = data.get('images', [])
     split_choices = data.get('split_choices', ['train'])
     split_ratios = data.get('split_ratios', {'train': 100, 'test': 0, 'val': 0})
+    save_path = data.get('save_path')
 
 
     # Log incoming parameters
@@ -718,6 +727,14 @@ def export_annotations(project_name):
             )
         else:
             return jsonify({'success': False, 'error': 'Invalid format specified'}), 400
+
+        if save_path:
+            os.makedirs(save_path, exist_ok=True)
+            zip_filename = f'{project_name}_{format_type}.zip'
+            zip_path = os.path.join(save_path, zip_filename)
+            with open(zip_path, 'wb') as f:
+                f.write(export_data.getvalue())
+            return jsonify({'success': True, 'saved_file': zip_path})
 
         return send_file(
             export_data,
