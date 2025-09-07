@@ -681,43 +681,95 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });    
 
-    async function downloadSelectedImages() {
+    // Download Modal Setup
+    const downloadModal = document.getElementById('download-modal');
+    const downloadCloseBtn = document.querySelector('#download-modal .close-btn');
+    const cancelDownloadBtn = document.getElementById('cancel-download');
+    const confirmDownloadBtn = document.getElementById('confirm-download');
+
+    downloadBtn.addEventListener('click', () => {
         const selectedCheckboxes = document.querySelectorAll('.image-checkbox:checked');
         if (selectedCheckboxes.length === 0) {
             alert('No images selected for download');
             return;
         }
-        
-        const filenames = [...new Set(
-            Array.from(selectedCheckboxes).map(cb => cb.dataset.path.split('/').pop())
-        )];
+        downloadModal.style.display = 'flex';
+    });
+
+    if (downloadCloseBtn) {
+        downloadCloseBtn.addEventListener('click', () => {
+            downloadModal.style.display = 'none';
+        });
+    }
+    cancelDownloadBtn.addEventListener('click', () => {
+        downloadModal.style.display = 'none';
+    });
+
+    document.getElementById('download-direct').addEventListener('change', () => {
+        document.getElementById('dl-path-container').style.display = 'none';
+    });
+
+    document.getElementById('download-path').addEventListener('change', () => {
+        document.getElementById('dl-path-container').style.display = 'block';
+    });
+
+    confirmDownloadBtn.addEventListener('click', async () => {
+        const option = document.querySelector('input[name="dl_option"]:checked').value;
+        const filenames = [...new Set(Array.from(document.querySelectorAll('.image-checkbox:checked')).map(cb => cb.dataset.path.split('/').pop()))];
+        let data = {
+            project: projectName,
+            images: filenames
+        };
+
+        if (option === 'path') {
+            const savePath = document.getElementById('dl-path-input').value.trim();
+            if (!savePath) {
+                alert('Please enter the save path');
+                return;
+            }
+            data.save_path = savePath;
+        }
+
+        showLoadingOverlay('Downloading...');
 
         try {
             const response = await fetch('/annotation/download_images', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    project: projectName,
-                    images: filenames
-                })
+                body: JSON.stringify(data)
             });
 
-            if (!response.ok) throw new Error('Failed to download images: ' + response.statusText);
+            if (!response.ok) {
+                throw new Error(response.statusText);
+            }
 
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${projectName}_images.zip`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const result = await response.json();
+                if (result.success) {
+                    showSuccessModal(`Images saved to ${result.saved_file}`);
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+            } else {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${projectName}_images.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }
+            downloadModal.style.display = 'none';
         } catch (error) {
             console.error('Download error:', error);
-            alert('Failed to download images: ' + error.message);
+            alert('Failed to download/save images: ' + error.message);
+        } finally {
+            hideLoadingOverlay();
         }
-    }
+    });
 
     let selectedFormat = null;
 
@@ -782,7 +834,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    confirmExportBtn.addEventListener('click', () => {
+    // Export save options radio listeners
+    document.getElementById('export-download').addEventListener('change', () => {
+        document.getElementById('export-path-container').style.display = 'none';
+    });
+
+    document.getElementById('export-path').addEventListener('change', () => {
+        document.getElementById('export-path-container').style.display = 'block';
+    });
+
+    confirmExportBtn.addEventListener('click', async () => {
         if (!selectedFormat) {
             alert('Please select an export format');
             return;
@@ -810,27 +871,62 @@ document.addEventListener('DOMContentLoaded', function() {
             splitRatios.train = 100;
         }
 
-        // Create and submit form instead of fetch
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/annotation/export/' + projectName;
-
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'export_data';  // Renamed to avoid conflict with 'data'
-        input.value = JSON.stringify({
+        let data = {
             format: selectedFormat,
             images: imagePaths,
             split_choices: splitChoices,
             split_ratios: splitRatios
-        });
+        };
 
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
+        const option = document.querySelector('input[name="export_option"]:checked').value;
+        if (option === 'path') {
+            const savePath = document.getElementById('export-path-input').value.trim();
+            if (!savePath) {
+                alert('Please enter the save path');
+                return;
+            }
+            data.save_path = savePath;
+        }
 
-        exportModal.style.display = 'none';
+        showLoadingOverlay('Exporting...');
+
+        try {
+            const response = await fetch(`/annotation/export/${projectName}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                throw new Error(response.statusText);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const result = await response.json();
+                if (result.success) {
+                    showSuccessModal(`Export saved to ${result.saved_file}`);
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+            } else {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${projectName}_${selectedFormat}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }
+            exportModal.style.display = 'none';
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Export failed: ' + error.message);
+        } finally {
+            hideLoadingOverlay();
+        }
     });
 
     const lazyImages = document.querySelectorAll('.lazy-load');
@@ -882,8 +978,6 @@ document.addEventListener('DOMContentLoaded', function() {
             selectImage(img, index);
         });
     });
-
-    downloadBtn.addEventListener('click', downloadSelectedImages);
 });
 
 function addSparkles() {
@@ -941,12 +1035,8 @@ aiPreannotatorBtn.addEventListener('click', async () => {
                     clearInterval(statusInterval);
                     statusInterval = null;
                     if (newStatus === 'completed') {
-                        alert('Pre-annotation completed successfully');
-                        const currentImg = document.querySelector('.thumbnail-row.selected img');
-                        if (currentImg) {
-                            const index = parseInt(document.querySelector('.thumbnail-row.selected').dataset.index, 10);
-                            selectImage(currentImg, index);
-                        }
+                        showSuccessModal('Pre-annotation completed successfully');
+                        setTimeout(() => location.reload(), 3000);
                     } else if (newStatus === 'failed') {
                         alert('Pre-annotation failed');
                     }
@@ -959,7 +1049,7 @@ aiPreannotatorBtn.addEventListener('click', async () => {
         const processingUnitSelect = document.getElementById('processing-unit');
         const cpuWarning = document.getElementById('cpu-warning');
         if (data.success && data.has_gpu) {
-            processingUnitSelect.value = 'gpu';
+            processingUnitSelect.value = 'cuda';
             processingUnitSelect.disabled = false;
             cpuWarning.style.display = 'none';
         } else {
@@ -1036,13 +1126,9 @@ aiPreannotatorForm.addEventListener('submit', async (e) => {
                     clearInterval(statusInterval);
                     statusInterval = null;
                     if (newStatus === 'completed') {
-                        alert('Pre-annotation completed successfully');
+                        showSuccessModal('Pre-annotation completed successfully');
                         aiPreannotatorModal.style.display = 'none';
-                        const currentImg = document.querySelector('.thumbnail-row.selected img');
-                        if (currentImg) {
-                            const index = parseInt(document.querySelector('.thumbnail-row.selected').dataset.index, 10);
-                            selectImage(currentImg, index);
-                        }
+                        setTimeout(() => location.reload(), 3000);
                     } else if (newStatus === 'failed') {
                         alert('Pre-annotation failed');
                     }
@@ -1101,8 +1187,8 @@ blindTrustBtn.addEventListener('click', async () => {
                     clearInterval(blindTrustStatusInterval);
                     blindTrustStatusInterval = null;
                     if (newStatus === 'completed') {
-                        alert('Blind Trust completed successfully');
-                        location.reload();
+                        showSuccessModal('Blind Trust completed successfully');
+                        setTimeout(() => location.reload(), 3000);
                     } else if (newStatus === 'failed') {
                         alert('Blind Trust failed');
                     }
@@ -1167,3 +1253,13 @@ blindTrustForm.addEventListener('submit', async (e) => {
         updateBlindTrustUI('not_started');
     }
 });
+
+function showSuccessModal(message) {
+    const modal = document.getElementById('save-modal');
+    const saveMessage = modal.querySelector('.save-message');
+    saveMessage.textContent = message;
+    modal.style.display = 'block';
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 3000);
+}
