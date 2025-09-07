@@ -29,12 +29,10 @@ WELCOME TO
   \ \  / / _ ___ _  ___ | |__   _ _ __ _ __ ___  
    \ \/ / | / __| |/ _ \|  __| | | '__| '_ ` _ \ 
     \  /  | \__ \ | (_) | |    | | |  | | | | | |
-     \/   |_|___/_|\___/|_|    |_|_|  |_| |_| |_|
-                                                 
-                                                 
+     \/   |_|___/_|\___/|_|    |_|_|  |_| |_| |_|                          
  
-Currently running the version:
-VisioFirm v0.1.4
+You are currently running the version:
+VisioFirm v0.2.0
 
 Stay updated by visiting our GitHub Repository https://github.com/OschAI/VisioFirm
 """.format(port=port))
