@@ -552,7 +552,7 @@
     max-width: 600px;
     max-height: 80vh;
     overflow-y: auto;
-    transform-origin: center; /* Added for modal scale animation */
+    transform-origin: center; 
     transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
@@ -560,28 +560,49 @@
     display: flex;
     align-items: center;
     gap: 15px;
-    background: linear-gradient(135deg, #ffffff 0%, #e8f5e9 100%); 
+    background: linear-gradient(135deg, #ffffff 0%, #e8f5e9 100%);
     border-radius: 12px;
     padding: 15px 25px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); 
-    border: 1px solid #4CAF50; 
-    animation: slideInFadeOut 3s ease forwards; 
-    pointer-events: auto; 
-    max-width: 350px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid #4CAF50;
+    animation: slideInFadeOut 3s ease forwards;
+    pointer-events: auto;
+    width: fit-content;
+    min-width: 250px;
+    max-width: 90vw;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
     height: auto;
 }
-  
+
+#save-modal .modal-content.blue-theme {
+    background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
+    border: 1px solid #2196F3;
+}
+
+#save-modal .modal-content.blue-theme .checkmark-circle,
+#save-modal .modal-content.blue-theme .checkmark-check {
+    stroke: #2196F3;
+}
+
+#save-modal .modal-content.blue-theme .save-message {
+    color: #1565C0; 
+}
+
 .save-icon {
     width: 24px;
     height: 24px;
 }
-  
+
 .save-message {
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--success-color);
+    color: #2e7d32;
+    max-width: 100%;
+    line-height: 1.4;
 }
-  
+
 .checkmark-circle {
     stroke: var(--success-color);
     stroke-width: 2;
