@@ -1258,8 +1258,11 @@ function showSuccessModal(message) {
     const modal = document.getElementById('save-modal');
     const saveMessage = modal.querySelector('.save-message');
     saveMessage.textContent = message;
+    const modalContent = modal.querySelector('.modal-content');
+    modalContent.classList.add('blue-theme'); // Add blue theme for these alerts
     modal.style.display = 'block';
     setTimeout(() => {
         modal.style.display = 'none';
+        modalContent.classList.remove('blue-theme'); // Clean up class after hide
     }, 3000);
 }
