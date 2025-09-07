@@ -45,29 +45,31 @@ export function initKeyboardShortcuts() {
             }
         }
         else if (e.ctrlKey && e.key === 'v') {
-            e.preventDefault();
-            navigator.clipboard.readText().then(text => {
-                try {
-                    const pastedAnnotation = JSON.parse(text);
-                    if (pastedAnnotation && pastedAnnotation.type) {
-                        pushToUndoStack();
-                        const scaledAnnotation = scaleAnnotation(
-                            pastedAnnotation,
-                            clipboardImageResolution.width, clipboardImageResolution.height,
-                            currentImage.width, currentImage.height
-                        );
-                        scaledAnnotation.x += 10;
-                        scaledAnnotation.y += 10;
-                        setAnnotations([...annotations, scaledAnnotation]);
-                        setSelectedAnnotation(scaledAnnotation);
-                        drawImage();
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && !e.target.isContentEditable) {
+                e.preventDefault();
+                navigator.clipboard.readText().then(text => {
+                    try {
+                        const pastedAnnotation = JSON.parse(text);
+                        if (pastedAnnotation && pastedAnnotation.type) {
+                            pushToUndoStack();
+                            const scaledAnnotation = scaleAnnotation(
+                                pastedAnnotation,
+                                clipboardImageResolution.width, clipboardImageResolution.height,
+                                currentImage.width, currentImage.height
+                            );
+                            scaledAnnotation.x += 10;
+                            scaledAnnotation.y += 10;
+                            setAnnotations([...annotations, scaledAnnotation]);
+                            setSelectedAnnotation(scaledAnnotation);
+                            drawImage();
+                        }
+                    } catch (err) {
+                        console.error('Failed to paste annotation: ', err);
                     }
-                } catch (err) {
-                    console.error('Failed to paste annotation: ', err);
-                }
-            }).catch(err => {
-                console.error('Failed to read clipboard contents: ', err);
-            });
+                }).catch(err => {
+                    console.error('Failed to read clipboard contents: ', err);
+                });
+            }
         }
         else if (e.ctrlKey && e.key === 'd') {
             e.preventDefault();
