@@ -2,12 +2,12 @@ import {
     initGlobals, 
     currentImage, 
     classColors, 
-    selectedClass, 
+    //selectedClass, 
     setSelectedClass,
     selectedAnnotation,
-    annotations,
+    //annotations,
     updateTagHighlights,
-    mode,
+    //mode,
     setMode
 } from './globals.js';
 import { initializeGridView, switchToAnnotationView, switchToGridView, sortImages, toggleView } from './viewManagement.js';
