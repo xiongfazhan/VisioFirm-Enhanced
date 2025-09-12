@@ -1,5 +1,21 @@
 ![VisioFirm](https://github.com/OschAI/VisioFirm/blob/main/examples/visiofirm-logo.gif)
 
+# VisioFirm 中文版: 快速近乎全自动的计算机视觉图像标注工具
+
+> **🌟 这是 VisioFirm 的中文化和优化版本**  
+> 基于原项目进行全面中文化，为中文用户提供更好的使用体验
+
+## 📋 项目说明
+
+本项目是对 [VisioFirm](https://github.com/OschAI/VisioFirm) 的中文化和二次开发版本，保持了原有的所有功能特性，同时针对中文用户进行了全面优化。
+
+### 🔄 与原项目的关系
+- **基于**: [OschAI/VisioFirm](https://github.com/OschAI/VisioFirm)
+- **许可证**: Apache License 2.0（与原项目相同）
+- **维护状态**: 积极维护和更新
+
+---
+
 # VisioFirm: Fast Almost fully-Automated Image Annotation for Computer Vision
 
 [![GitHub Stars](https://img.shields.io/github/stars/OschAI/VisioFirm?style=social)](https://github.com/OschAI/VisioFirm/stargazers)
@@ -17,6 +33,21 @@
 > [!NOTE]
 > If you prefer the HF transformers-based library (pre-0.2.0), install from the main branch via `pip install visiofirm==0.1.0`.
 -------
+
+## 🚀 中文化特性 / Chinese Localization Features
+
+### ✨ 全面中文化
+- 🖥️ **完整的中文界面**: 所有按钮、菜单、对话框都已中文化
+- 📝 **中文提示信息**: 错误消息、状态提示、帮助文本全部中文化
+- 🎯 **本地化交互**: 符合中文用户使用习惯的界面设计
+- 📚 **中文文档**: 完整的中文使用说明和API文档
+
+### 🛠️ 优化改进
+- 🎨 **界面优化**: 针对中文文本长度优化了布局
+- 🔧 **功能增强**: 保持原有功能的同时提升用户体验
+- 📱 **响应式设计**: 更好的移动端中文显示效果
+
+---
 
 **VisioFirm** is an open-source, AI-powered image annotation tool designed to accelerate labeling for computer vision tasks like object detection, oriented bounding boxes (OBB), and segmentation. Built for speed and simplicity, it leverages state-of-the-art models for semi-automated pre-annotations, allowing you to focus on refining rather than starting from scratch. Whether you're preparing datasets for YOLO, SAM, or custom models, VisioFirm streamlines your workflow with a intuitive web interface and powerful backend.
 

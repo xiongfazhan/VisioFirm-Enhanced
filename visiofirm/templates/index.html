@@ -1,10 +1,10 @@
 {% extends "labeler_base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}仪表板{% endblock %}
 {% block content %}
 <div class="dashboard">
     <div class="header">
-        <h2>Projects</h2>
-        <button class="create-btn">Create New Project</button>
+        <h2>项目</h2>
+        <button class="create-btn">创建新项目</button>
     </div>
     <div class="projects-grid">
         {% for project in projects %}
@@ -18,9 +18,9 @@
                     <span class="project-name">{{ project.name }}</span>
                     <button class="menu-btn">⋮</button>
                     <div class="menu-dropdown" style="display: none;">
-                        <button class="overview-btn" data-project="{{ project.name }}">Overview</button>
-                        <button class="import-btn" data-project="{{ project.name }}">Add Images</button>
-                        <button class="delete-btn" data-project="{{ project.name }}">Delete</button>
+                        <button class="overview-btn" data-project="{{ project.name }}">概览</button>
+                        <button class="import-btn" data-project="{{ project.name }}">添加图片</button>
+                        <button class="delete-btn" data-project="{{ project.name }}">删除</button>
                     </div>
                 </div>
             </div>
@@ -31,65 +31,65 @@
 <div class="modal">
     <div class="modal-content">
         <button class="close-btn">×</button>
-        <h2>Create New Project</h2>
+        <h2>创建新项目</h2>
         <form id="project-form" enctype="multipart/form-data">
             <div class="tab-headers">
-                <button type="button" class="tab-btn active" data-tab="settings">Project settings</button>
-                <button type="button" class="tab-btn" data-tab="setup">Setup configuration</button>
-                <button type="button" class="tab-btn" data-tab="import">Data import</button>
-                <button type="button" class="tab-btn disabled" data-tab="summary" id="summary-tab">Summary</button>
+                <button type="button" class="tab-btn active" data-tab="settings">项目设置</button>
+                <button type="button" class="tab-btn" data-tab="setup">配置设置</button>
+                <button type="button" class="tab-btn" data-tab="import">数据导入</button>
+                <button type="button" class="tab-btn disabled" data-tab="summary" id="summary-tab">摘要</button>
             </div>
             <div class="tab-content active" id="settings">
                 <div class="form-group">
-                    <label>Project Name *</label>
+                    <label>项目名称 *</label>
                     <input type="text" id="project-name" name="project_name" value="#VisioFirm" required>
                 </div>
                 <div class="form-group">
-                    <label>Description</label>
+                    <label>描述</label>
                     <textarea id="description" name="description"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Class Names (separate with commas, dots, or semicolons)</label>
-                    <input type="text" id="class-names" name="class_names" placeholder="e.g., car, truck, person">
+                    <label>类别名称（用逗号、句号或分号分隔）</label>
+                    <input type="text" id="class-names" name="class_names" placeholder="例如：汽车, 卡车, 人">
                     <div class="class-suggestions">
-                        <input type="text" id="class-search" placeholder="Search COCO classes...">
+                        <input type="text" id="class-search" placeholder="搜索COCO类别...">
                         <div id="class-tags" class="class-tags"></div>
                     </div>
                 </div>
-                <button type="button" class="next-btn" data-next-tab="setup">Next</button>
+                <button type="button" class="next-btn" data-next-tab="setup">下一步</button>
             </div>
             <div class="tab-content" id="setup">
                 <div class="form-group">
-                    <label>Setup *</label>
+                    <label>设置 *</label>
                     <div class="setup-choice">
                         <button type="button" class="setup-btn" data-type="Bounding Box">
-                            <img src="{{ url_for('static', filename='img/bb_logo.gif') }}" alt="Bounding Box" class="setup-gif">
-                            <span>Bounding Box</span>
+                            <img src="{{ url_for('static', filename='img/bb_logo.gif') }}" alt="边界框" class="setup-gif">
+                            <span>边界框</span>
                         </button>
                         <button type="button" class="setup-btn" data-type="Oriented Bounding Box">
-                            <img src="{{ url_for('static', filename='img/obb_logo.gif') }}" alt="Oriented Bounding Box" class="setup-gif">
-                            <span>Oriented Bounding Box</span>
+                            <img src="{{ url_for('static', filename='img/obb_logo.gif') }}" alt="有向边界框" class="setup-gif">
+                            <span>有向边界框</span>
                         </button>
                         <button type="button" class="setup-btn" data-type="Segmentation">
-                            <img src="{{ url_for('static', filename='img/seg_logo.gif') }}" alt="Segmentation" class="setup-gif">
-                            <span>Segmentation</span>
+                            <img src="{{ url_for('static', filename='img/seg_logo.gif') }}" alt="分割" class="setup-gif">
+                            <span>分割</span>
                         </button>
                     </div>
                     <input type="hidden" id="setup-type" name="setup_type" required>
                 </div>
-                <button type="button" class="next-btn" data-next-tab="import">Next</button>
+                <button type="button" class="next-btn" data-next-tab="import">下一步</button>
             </div>
             <div class="tab-content" id="import">
                 <div class="form-group">
-                    <label>Data Import *</label>
+                    <label>数据导入 *</label>
                     <div class="drop-zone" id="drop-zone">
                         <i class="fa-solid fa-file-arrow-down drop-icon"></i>
-                        <p>Drag and drop images/folders/archives here.</p>
-                        <p><strong>Accepted file formats:</strong></p>
-                        <p>Image: .webp, .jpg, .jpeg, .png, .avif</p>
-                        <p>Compressed file with images: .zip, .tar, .rar</p>
-                        <p>Folder of images</p>
-                        <p id="compress-message" class="compress-message" style="display: none;">Compressed file detected! It will be extracted on submission. If you have annotation they will be added after project creation.</p>
+                        <p>将图片/文件夹/压缩包拖拽到此处。</p>
+                        <p><strong>支持的文件格式：</strong></p>
+                        <p>图片：.webp, .jpg, .jpeg, .png, .avif</p>
+                        <p>包含图片的压缩文件：.zip, .tar, .rar</p>
+                        <p>图片文件夹</p>
+                        <p id="compress-message" class="compress-message" style="display: none;">检测到压缩文件！将在提交时解压。如果您有标注文件，它们将在项目创建后添加。</p>
                     </div>
                     <input type="file" id="file-input" name="files" multiple 
                         accept=".webp,.WEBP,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.avif,.AVIF,.zip,.ZIP,.tar,.TAR,.rar,.RAR" 
@@ -97,17 +97,17 @@
                     <div id="file-list" class="file-list" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
                     <div id="loading-waiter" class="loading-waiter" style="display: none;">
                         <div class="spinner"></div>
-                        <p>Processing images...</p>
+                        <p>正在处理图片...</p>
                     </div>
                 </div>
                 <div id="progress-container" style="margin-top: 10px;"></div>
-                <button type="button" class="next-btn" data-next-tab="summary">Next</button>
+                <button type="button" class="next-btn" data-next-tab="summary">下一步</button>
             </div>
             <div class="tab-content" id="summary">
-                <h3>Annotation Summary</h3>
+                <h3>标注摘要</h3>
                 <div id="annotation-summary"></div>
                 <div class="create-btn-container">
-                    <button type="submit" class="create-btn">Create Project</button>
+                    <button type="submit" class="create-btn">创建项目</button>
                 </div>
             </div>
         </form>
@@ -117,18 +117,18 @@
 <div class="modal" id="import-modal">
     <div class="modal-content">
         <button class="close-btn import-close-btn">×</button>
-        <h2 class="modal-title">Import More Images</h2>
+        <h2 class="modal-title">导入更多图片</h2>
         <form id="import-form" enctype="multipart/form-data">
             <div class="form-group">
-                <label class="import-label">Import Images for <span id="import-project-name" class="project-name-highlight"></span></label>
+                <label class="import-label">为 <span id="import-project-name" class="project-name-highlight"></span> 导入图片</label>
                 <div class="drop-zone" id="import-drop-zone">
                     <i class="fa-solid fa-file-arrow-down drop-icon"></i>
-                    <p>Drag and drop images/folders/archives here.</p>
-                    <p><strong>Accepted file formats:</strong></p>
-                    <p>Image: .webp, .jpg, .jpeg, .png, .avif</p>
-                    <p>Compressed file with images: .zip, .tar, .rar</p>
-                    <p>Folder of images</p>
-                    <p id="import-compress-message" class="compress-message" style="display: none;">Compressed file detected! It will be extracted on submission.</p>
+                    <p>将图片/文件夹/压缩包拖拽到此处。</p>
+                    <p><strong>支持的文件格式：</strong></p>
+                    <p>图片：.webp, .jpg, .jpeg, .png, .avif</p>
+                    <p>包含图片的压缩文件：.zip, .tar, .rar</p>
+                    <p>图片文件夹</p>
+                    <p id="import-compress-message" class="compress-message" style="display: none;">检测到压缩文件！将在提交时解压。</p>
                 </div>
                 <input type="file" id="import-file-input" name="files" multiple 
                     accept=".webp,.WEBP,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.avif,.AVIF,.zip,.ZIP,.tar,.TAR,.rar,.RAR" 
@@ -136,11 +136,11 @@
                 <div id="import-file-list" class="file-list" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
                 <div id="import-loading-waiter" class="loading-waiter" style="display: none;">
                     <div class="spinner"></div>
-                    <p>Processing images...</p>
+                    <p>正在处理图片...</p>
                 </div>
             </div>
             <div id="import-progress-container" style="margin-top: 10px;"></div>
-            <button type="submit" class="create-btn" disabled>Import Files</button>
+            <button type="submit" class="create-btn" disabled>导入文件</button>
         </form>
     </div>
 </div>
@@ -148,15 +148,15 @@
 <div class="modal" id="delete-confirm-modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>⚠️ Confirm Deletion</h2>
+            <h2>⚠️ 确认删除</h2>
             <button class="close-btn" id="cancel-delete">×</button>
         </div>
         <div class="modal-body">
             <p id="delete-message"></p>
         </div>
         <div class="modal-footer">
-            <button class="next-btn" id="confirm-delete">Yes, Delete</button>
-            <button class="close-btn" id="cancel-delete-footer">Cancel</button>
+            <button class="next-btn" id="confirm-delete">是的，删除</button>
+            <button class="close-btn" id="cancel-delete-footer">取消</button>
         </div>
     </div>
 </div>
@@ -164,8 +164,8 @@
 <div class="modal" id="overview-modal">
     <div class="modal-content">
         <button class="close-btn overview-close-btn">×</button>
-        <h2 class="modal-title">Project Overview: <span id="overview-project-name"></span></h2>
-        <div id="total-images">Total Images: <span id="total-images-count"></span></div>
+        <h2 class="modal-title">项目概览：<span id="overview-project-name"></span></h2>
+        <div id="total-images">总图片数：<span id="total-images-count"></span></div>
         <div id="overview-charts">
             <div id="image-stats"></div>
             <div id="class-distribution"></div>

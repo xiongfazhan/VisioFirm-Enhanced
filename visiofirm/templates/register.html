@@ -1,37 +1,37 @@
 {% extends "labeler_base.html" %}
-{% block title %}Register{% endblock %}
+{% block title %}注册{% endblock %}
 {% block content %}
 <canvas id="three-canvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;"></canvas>
 <div class="register-form">
-    <h2>Register</h2>
+    <h2>注册</h2>
     <form method="post">
         <div class="form-group">
-            <label for="first_name">First Name</label>
+            <label for="first_name">名</label>
             <input type="text" id="first_name" name="first_name" required>
         </div>
         <div class="form-group">
-            <label for="last_name">Last Name</label>
+            <label for="last_name">姓</label>
             <input type="text" id="last_name" name="last_name" required>
         </div>
         <div class="form-group">
-            <label for="username">Username</label>
+            <label for="username">用户名</label>
             <input type="text" id="username" name="username" required>
         </div>
         <div class="form-group">
-            <label for="email">Email</label>
+            <label for="email">邮箱</label>
             <input type="email" id="email" name="email" required>
         </div>
         <div class="form-group">
-            <label for="password">Password</label>
+            <label for="password">密码</label>
             <input type="password" id="password" name="password" required>
         </div>
         <div class="form-group">
-            <label for="company">Company (Optional)</label>
+            <label for="company">公司（可选）</label>
             <input type="text" id="company" name="company">
         </div>
-        <button type="submit">Register</button>
+        <button type="submit">注册</button>
     </form>
-    <p>Already have an account? <a href="{{ url_for('auth.login') }}">Login</a></p>
+    <p>已有账户？<a href="{{ url_for('auth.login') }}">登录</a></p>
 </div>
 <style>
     .register-form {

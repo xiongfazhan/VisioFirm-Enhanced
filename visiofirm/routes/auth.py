@@ -14,10 +14,10 @@ def login():
         if user_data and check_password_hash(user_data[2], password):
             user = User(user_data[0], user_data[1], user_data[3], user_data[4], user_data[5], user_data[6])
             login_user(user)
-            flash('Login successful!', 'success')
+            flash('登录成功！', 'success')
             return redirect(url_for('dashboard.index'))
         else:
-            flash('Invalid username/email or password', 'error')
+            flash('用户名/邮箱或密码无效', 'error')
     return render_template('login.html')
 
 @bp.route('/register', methods=['GET', 'POST'])
@@ -30,12 +30,12 @@ def register():
         password = request.form['password']
         company = request.form['company']
         if not all([first_name, last_name, username, email, password]):
-            flash('All required fields must be filled', 'error')
+            flash('所有必填字段都必须填写', 'error')
         elif create_user(first_name, last_name, username, email, password, company):
-            flash('Registration successful. Please log in.', 'success')
+            flash('注册成功。请登录。', 'success')
             return redirect(url_for('auth.login'))
         else:
-            flash('Username or email already exists', 'error')
+            flash('用户名或邮箱已存在', 'error')
     return render_template('register.html')
 
 @bp.route('/profile', methods=['GET', 'POST'])
@@ -61,15 +61,15 @@ def profile():
             updates['company'] = company
 
         if not updates:
-            flash('No changes provided', 'error')
+            flash('未提供任何更改', 'error')
             return redirect(url_for('auth.profile'))
 
         success = update_user(current_user.id, updates)
         if success:
-            flash('Profile updated successfully!', 'success')
+            flash('个人资料更新成功！', 'success')
             return redirect(url_for('auth.profile'))
         else:
-            flash('Email already exists', 'error')
+            flash('邮箱已存在', 'error')
 
     return render_template('profile.html', user=current_user)
 

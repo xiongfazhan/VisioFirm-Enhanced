@@ -42,7 +42,7 @@ export function updateAnnotationStatus(imagePath, isAnnotated) {
         gridCard.dataset.annotated = isAnnotated;
         gridCard.dataset.preannotated = isAnnotated ? 'false' : gridCard.dataset.preannotated;
         if (statusSpan) {
-            statusSpan.textContent = isAnnotated ? 'Annotated' : (gridCard.dataset.preannotated === 'true' ? 'Pre-Annotated' : 'Not Annotated');
+            statusSpan.textContent = isAnnotated ? '已标注' : (gridCard.dataset.preannotated === 'true' ? '预标注' : '未标注');
             statusSpan.dataset.annotated = isAnnotated;
             statusSpan.dataset.preannotated = isAnnotated ? 'false' : gridCard.dataset.preannotated;
         }
@@ -64,7 +64,7 @@ export function updateAnnotationStatus(imagePath, isAnnotated) {
         const statusCell = listRow.cells[4];
         const annotatorCell = listRow.cells[5];
         if (statusCell) {
-            statusCell.textContent = isAnnotated ? 'Annotated' : (listRow.dataset.preannotated === 'true' ? 'Pre-Annotated' : 'Not Annotated');
+            statusCell.textContent = isAnnotated ? '已标注' : (listRow.dataset.preannotated === 'true' ? '预标注' : '未标注');
             statusCell.dataset.annotated = isAnnotated;
             statusCell.dataset.preannotated = isAnnotated ? 'false' : listRow.dataset.preannotated;
         }

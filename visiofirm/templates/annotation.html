@@ -1,5 +1,5 @@
 {% extends "labeler_base.html" %}
-{% block title %}{{ project_name }} - Annotation{% endblock %}
+{% block title %}{{ project_name }} - 标注{% endblock %}
 {% block content %}
 <style>
     .avatar {
@@ -81,51 +81,51 @@
     <div id="grid-view" class="view-container grid-view">
         <div class="grid-header">
             <div class="bulk-actions">
-                <button class="grid-btn" id="select-all-btn" title="Select All">
-                    <i class="fas fa-check-square"></i> Select All
+                <button class="grid-btn" id="select-all-btn" title="全选">
+                    <i class="fas fa-check-square"></i> 全选
                 </button>
-                <button class="grid-btn" id="download-btn" title="Download Unlabeled" disabled>
-                    <i class="fas fa-download"></i> Download
+                <button class="grid-btn" id="download-btn" title="下载未标注" disabled>
+                    <i class="fas fa-download"></i> 下载
                 </button>
-                <button class="grid-btn" id="delete-images-btn" title="Delete Selected" disabled>
-                    <i class="fas fa-trash"></i> Delete
+                <button class="grid-btn" id="delete-images-btn" title="删除选中" disabled>
+                    <i class="fas fa-trash"></i> 删除
                 </button>
-                <button class="grid-btn" id="import-images-btn" title="Import More Images">
-                    <i class="fas fa-upload"></i> Import
+                <button class="grid-btn" id="import-images-btn" title="导入更多图片">
+                    <i class="fas fa-upload"></i> 导入
                 </button>
-                <button class="grid-btn" id="export-btn" title="Export Annotations">
-                    <i class="fas fa-file-export"></i> Export
+                <button class="grid-btn" id="export-btn" title="导出标注">
+                    <i class="fas fa-file-export"></i> 导出
                 </button>
             </div>
             <div class="grid-controls">
                 <div class="dropdown">
-                    <button id="sort-btn" class="layout-btn" title="Rearrange List">
-                        <i class="fas fa-sort"></i> Sort
+                    <button id="sort-btn" class="layout-btn" title="重新排列列表">
+                        <i class="fas fa-sort"></i> 排序
                     </button>
                     <div class="dropdown-content">
-                        <a href="#" data-sort="name-asc">Name (A-Z)</a>
-                        <a href="#" data-sort="name-desc">Name (Z-A)</a>
-                        <a href="#" data-sort="date-asc">Date (Oldest First)</a>
-                        <a href="#" data-sort="date-desc">Date (Newest First)</a>
-                        <a href="#" data-sort="status-asc">Completion (Annotated First)</a>
-                        <a href="#" data-sort="status-desc">Completion (Unannotated First)</a>
+                        <a href="#" data-sort="name-asc">名称 (A-Z)</a>
+                        <a href="#" data-sort="name-desc">名称 (Z-A)</a>
+                        <a href="#" data-sort="date-asc">日期 (最旧优先)</a>
+                        <a href="#" data-sort="date-desc">日期 (最新优先)</a>
+                        <a href="#" data-sort="status-asc">完成度 (已标注优先)</a>
+                        <a href="#" data-sort="status-desc">完成度 (未标注优先)</a>
                     </div>
                 </div>
-                <button id="grid-toggle-btn" class="layout-btn active" title="Grid View" data-view="grid">
-                    <i class="fas fa-th"></i> Grid
+                <button id="grid-toggle-btn" class="layout-btn active" title="网格视图" data-view="grid">
+                    <i class="fas fa-th"></i> 网格
                 </button>
-                <button id="list-toggle-btn" class="layout-btn" title="List View" data-view="list">
-                    <i class="fas fa-list"></i> List
+                <button id="list-toggle-btn" class="layout-btn" title="列表视图" data-view="list">
+                    <i class="fas fa-list"></i> 列表
                 </button>
             </div>
-            <button id="ai-preannotator-btn" class="layout-btn ai-preannotator-btn" title="AI Pre-annotator">
-                <i class="fas fa-robot"></i> AI Pre-annotator
+            <button id="ai-preannotator-btn" class="layout-btn ai-preannotator-btn" title="AI预标注器">
+                <i class="fas fa-robot"></i> AI预标注器
             </button>
-            <button id="ai-blind-trust" class="layout-btn ai-blind-trust" title="Blind Trust">
-                <i class="fa-solid fa-fingerprint"></i> Blind Trust
+            <button id="ai-blind-trust" class="layout-btn ai-blind-trust" title="盲信任">
+                <i class="fa-solid fa-fingerprint"></i> 盲信任
             </button>
-            <button id="viewport-btn-grid" class="layout-btn" title="Switch to Viewport Mode">
-                <i class="fas fa-desktop"></i> Annotate
+            <button id="viewport-btn-grid" class="layout-btn" title="切换到视口模式">
+                <i class="fas fa-desktop"></i> 标注
             </button>
         </div>
         <div class="grid-content">
@@ -146,11 +146,11 @@
                             <span class="image-date">{{ '2023-01-01' }}</span>
                             <span class="image-status" data-annotated="{% if image in annotated_images %}true{% else %}false{% endif %}" data-preannotated="{% if image in preannotated_images %}true{% else %}false{% endif %}">
                                 {% if image in annotated_images %}
-                                    Annotated
+                                    已标注
                                 {% elif image in preannotated_images %}
-                                    Pre-Annotated
+                                    预标注
                                 {% else %}
-                                    Not Annotated
+                                    未标注
                                 {% endif %}
                             </span>
                         </div>
@@ -208,8 +208,8 @@
         <div class="images-list">
             <div class="images-header">
                 <h2>Images</h2>
-                <button id="viewport-btn-annotation" class="layout-btn" title="Switch to Grid View">
-                    <i class="fas fa-th-large"></i> Grid View
+                <button id="viewport-btn-annotation" class="layout-btn" title="切换到网格视图">
+                    <i class="fas fa-th-large"></i> 网格视图
                 </button>
             </div>
             <div class="thumbnails">
@@ -233,8 +233,8 @@
                     <div class="image-info"></div>
                     <canvas id="labeling-canvas"></canvas>
                     <div class="shortcuts-sidebar">
-                        <button class="shortcuts-toggle" title="Toggle Shortcuts">
-                            <i class="fas fa-keyboard"></i> Shortcuts
+                        <button class="shortcuts-toggle" title="切换快捷键">
+                            <i class="fas fa-keyboard"></i> 快捷键
                         </button>
                         <div class="shortcuts-content">
                             <div class="shortcuts-legend"></div>
@@ -242,26 +242,26 @@
                         </div>
                     </div>
                     <div class="canvas-controls">
-                        <button class="control-btn" id="rect-mode" title="Draw Rectangle"><img src="{{ url_for('static', filename='img/logos/rect-mode.svg') }}" alt="Draw Rectangle"></button>
-                        <button class="control-btn" id="polygon-mode" title="Draw Polygon"><img src="{{ url_for('static', filename='img/logos/polygon-mode.svg') }}" alt="Draw Polygon"></button>
-                        <button class="control-btn" id="magic-mode" title="One Click Annotation"><img src="{{ url_for('static', filename='img/logos/magic-mode.svg') }}" alt="One Click Annotation"></button>
-                        <button class="control-btn" id="select-mode" title="Select Labels"><img src="{{ url_for('static', filename='img/logos/select-mode.svg') }}" alt="Select Labels"></button>
-                        <button class="control-btn" id="reset-view" title="Reset View"><img src="{{ url_for('static', filename='img/logos/reset-view.svg') }}" alt="Reset View"></button>
-                        <button class="control-btn" id="undo-btn" title="Undo Last Action"><img src="{{ url_for('static', filename='img/logos/undo-btn.svg') }}" alt="Undo Last Action"></button>
-                        <button class="control-btn" id="delete-btn" title="Delete Selected Annotation"><img src="{{ url_for('static', filename='img/logos/delete-btn.svg') }}" alt="Delete Selected Annotation"></button>
-                        <button class="control-btn" id="zoom-in-btn" title="Zoom In"><img src="{{ url_for('static', filename='img/logos/zoom-in-btn.svg') }}" alt="Zoom In"></button>
-                        <button class="control-btn" id="zoom-out-btn" title="Zoom Out"><img src="{{ url_for('static', filename='img/logos/zoom-out-btn.svg') }}" alt="Zoom Out"></button>
-                        <button class="control-btn" id="duplicate-btn" title="Duplicate Selected Annotation"><img src="{{ url_for('static', filename='img/logos/duplicate-btn.svg') }}" alt="Duplicate Selected Annotation"></button>
-                        <button class="control-btn" id="save-btn" title="Save Annotations"><img src="{{ url_for('static', filename='img/logos/save-btn.svg') }}" alt="Save Annotations"></button>
-                        <button class="control-btn" id="grid-btn" title="Toggle Grid"><img src="{{ url_for('static', filename='img/logos/grid-btn.svg') }}" alt="Toggle Grid"></button>
-                        <button class="control-btn" id="prev-image-btn" title="Previous Image"><img src="{{ url_for('static', filename='img/logos/prev-image-btn.svg') }}" alt="Previous Image"></button>
-                        <button class="control-btn" id="next-image-btn" title="Next Image"><img src="{{ url_for('static', filename='img/logos/next-image-btn.svg') }}" alt="Next Image"></button>
+                        <button class="control-btn" id="rect-mode" title="绘制矩形"><img src="{{ url_for('static', filename='img/logos/rect-mode.svg') }}" alt="绘制矩形"></button>
+                        <button class="control-btn" id="polygon-mode" title="绘制多边形"><img src="{{ url_for('static', filename='img/logos/polygon-mode.svg') }}" alt="绘制多边形"></button>
+                        <button class="control-btn" id="magic-mode" title="一键标注"><img src="{{ url_for('static', filename='img/logos/magic-mode.svg') }}" alt="一键标注"></button>
+                        <button class="control-btn" id="select-mode" title="选择标签"><img src="{{ url_for('static', filename='img/logos/select-mode.svg') }}" alt="选择标签"></button>
+                        <button class="control-btn" id="reset-view" title="重置视图"><img src="{{ url_for('static', filename='img/logos/reset-view.svg') }}" alt="重置视图"></button>
+                        <button class="control-btn" id="undo-btn" title="撤销上一步操作"><img src="{{ url_for('static', filename='img/logos/undo-btn.svg') }}" alt="撤销上一步操作"></button>
+                        <button class="control-btn" id="delete-btn" title="删除选中标注"><img src="{{ url_for('static', filename='img/logos/delete-btn.svg') }}" alt="删除选中标注"></button>
+                        <button class="control-btn" id="zoom-in-btn" title="放大"><img src="{{ url_for('static', filename='img/logos/zoom-in-btn.svg') }}" alt="放大"></button>
+                        <button class="control-btn" id="zoom-out-btn" title="缩小"><img src="{{ url_for('static', filename='img/logos/zoom-out-btn.svg') }}" alt="缩小"></button>
+                        <button class="control-btn" id="duplicate-btn" title="复制选中标注"><img src="{{ url_for('static', filename='img/logos/duplicate-btn.svg') }}" alt="复制选中标注"></button>
+                        <button class="control-btn" id="save-btn" title="保存标注"><img src="{{ url_for('static', filename='img/logos/save-btn.svg') }}" alt="保存标注"></button>
+                        <button class="control-btn" id="grid-btn" title="切换网格"><img src="{{ url_for('static', filename='img/logos/grid-btn.svg') }}" alt="切换网格"></button>
+                        <button class="control-btn" id="prev-image-btn" title="上一张图片"><img src="{{ url_for('static', filename='img/logos/prev-image-btn.svg') }}" alt="上一张图片"></button>
+                        <button class="control-btn" id="next-image-btn" title="下一张图片"><img src="{{ url_for('static', filename='img/logos/next-image-btn.svg') }}" alt="下一张图片"></button>
                     </div>
                 </div>
                 <div class="ai-options">
-                    <button id="hide-prediction-btn">Hide Pred.</button>
+                    <button id="hide-prediction-btn">隐藏预测</button>
                     <div class="confidence-slider">
-                        <label for="confidence-slider">Conf.: <span id="confidence-value">0.4</span></label>
+                        <label for="confidence-slider">置信度: <span id="confidence-value">0.4</span></label>
                         <input type="range" id="confidence-slider" min="0" max="1" step="0.01" value="0.4" style="-webkit-appearance: slider-vertical; writing-mode: bt-lr; width: 8px; height: 100%;">
                     </div>
                 </div>
@@ -270,7 +270,7 @@
                 <div class="class-selector">
                     <div id="class-tags-container"></div>
                 </div>
-                <button class="approve-btn" id="approve-btn">Approve</button>
+                <button class="approve-btn" id="approve-btn">批准</button>
             </div>
         </div>
     </div>
@@ -283,24 +283,24 @@
                     <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
                 </svg>
             </div>
-            <p class="save-message">Annotations saved successfully!</p>
+            <p class="save-message">标注保存成功！</p>
         </div>
     </div>
     <div class="modal" id="import-images-modal">
         <div class="modal-content">
             <button class="close-btn import-close-btn">×</button>
-            <h2 class="modal-title">Import More Images</h2>
+            <h2 class="modal-title">导入更多图片</h2>
             <form id="import-images-form" enctype="multipart/form-data">
                 <div class="form-group">
-                    <label class="import-label">Import Images for <span class="project-name-highlight">{{ project_name }}</span></label>
+                    <label class="import-label">为 <span class="project-name-highlight">{{ project_name }}</span> 导入图片</label>
                     <div class="drop-zone" id="import-images-drop-zone">
                         <i class="fa-solid fa-file-arrow-down drop-icon"></i>
-                        <p>Drag and drop images/folders/archives here.</p>
-                        <p><strong>Accepted file formats:</strong></p>
-                        <p>Image: .webp, .jpg, .jpeg, .png, .avif</p>
-                        <p>Compressed file with images: .zip, .tar, .rar</p>
-                        <p>Folder of images</p>
-                        <p id="import-images-compress-message" class="compress-message" style="display: none;">Compressed file detected! It will be extracted on submission.</p>
+                        <p>将图片/文件夹/压缩包拖拽到此处。</p>
+                        <p><strong>支持的文件格式：</strong></p>
+                        <p>图片：.webp, .jpg, .jpeg, .png, .avif</p>
+                        <p>包含图片的压缩文件：.zip, .tar, .rar</p>
+                        <p>图片文件夹</p>
+                        <p id="import-images-compress-message" class="compress-message" style="display: none;">检测到压缩文件！将在提交时解压。</p>
                     </div>
                     <input type="file" id="import-images-file-input" name="files" multiple
                         accept=".webp,.WEBP,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.avif,.AVIF,.zip,.ZIP,.tar,.TAR,.rar,.RAR"
@@ -308,31 +308,31 @@
                     <div id="import-images-file-list" class="file-list" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
                 </div>
                 <div id="import-images-progress-container" style="margin-top: 10px;"></div>
-                <button type="submit" class="create-btn" disabled>Import Files</button>
+                <button type="submit" class="create-btn" disabled>导入文件</button>
             </form>
         </div>
     </div>
     <div class="modal" id="download-modal">
         <div class="modal-content">
             <button class="close-btn">×</button>
-            <h2 class="modal-title">Download Options</h2>
-            <p class="modal-subtitle">Choose how to download the selected images.</p>
+            <h2 class="modal-title">下载选项</h2>
+            <p class="modal-subtitle">选择如何下载选中的图片。</p>
             <div class="download-options">
                 <div class="radio-group">
                     <input type="radio" id="download-direct" name="dl_option" value="direct" checked>
-                    <label for="download-direct">Download ZIP file to browser</label>
+                    <label for="download-direct">下载ZIP文件到浏览器</label>
                     <input type="radio" id="download-path" name="dl_option" value="path">
-                    <label for="download-path">Save ZIP file to local path (Cloud users)</label>
+                    <label for="download-path">保存ZIP文件到本地路径（云用户）</label>
                 </div>
                 <div id="dl-path-container" style="display: none;">
-                    <label for="dl-path-input">Absolute folder path:</label>
-                    <input type="text" id="dl-path-input" placeholder="/absolute/path/to/save/folder">
-                    <small>If folder does not exist, it will be created. Please do not enter root priviliged paths.</small>
+                    <label for="dl-path-input">绝对文件夹路径：</label>
+                    <input type="text" id="dl-path-input" placeholder="/绝对/路径/到/保存/文件夹">
+                    <small>如果文件夹不存在，将会创建。请不要输入需要root权限的路径。</small>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="cancel-btn" id="cancel-download">Cancel</button>
-                <button class="download-btn" id="confirm-download">Confirm Download</button>
+                <button class="cancel-btn" id="cancel-download">取消</button>
+                <button class="download-btn" id="confirm-download">确认下载</button>
             </div>
         </div>
     </div>
@@ -341,12 +341,12 @@
             <div class="modal-header danger-header">
                 <div class="header-content">
                     <i class="fas fa-exclamation-triangle danger-icon"></i>
-                    <h2>Confirm Image Deletion</h2>
+                    <h2>确认删除图片</h2>
                 </div>
-                <button class="close-btn" id="cancel-delete-images" title="Close">×</button>
+                <button class="close-btn" id="cancel-delete-images" title="关闭">×</button>
             </div>
             <div class="modal-body">
-                <p id="delete-images-message">Are you sure you want to delete the selected images? This action cannot be undone.</p>
+                <p id="delete-images-message">您确定要删除选中的图片吗？此操作无法撤销。</p>
             </div>
             <div class="modal-footer">
                 <button class="cancel-btn" id="cancel-delete-images-footer">Cancel</button>
@@ -486,56 +486,56 @@
     <div class="modal" id="ai-preannotator-modal">
         <div class="modal-content ai-modal-content">
             <button class="close-btn">×</button>
-            <h2>AI Pre-annotator Configuration</h2>
+            <h2>AI预标注器配置</h2>
             <form id="ai-preannotator-form">
                 <div class="form-group">
-                    <label>Annotation Mode</label>
+                    <label>标注模式</label>
                     <div class="mode-buttons">
-                        <button type="button" class="mode-btn active" data-mode="zero-shot">Zero-shot Detection</button>
-                        <button type="button" class="mode-btn" data-mode="custom-model">Ultralytics Model</button>
+                        <button type="button" class="mode-btn active" data-mode="zero-shot">零样本检测</button>
+                        <button type="button" class="mode-btn" data-mode="custom-model">Ultralytics模型</button>
                     </div>
                     <input type="hidden" id="mode" name="mode" value="zero-shot">
                 </div>
                 <div id="zero-shot-options" class="form-group">
-                    <label>Grounding Dino Model</label>
+                    <label>Grounding Dino模型</label>
                     <select id="dino-model">
                         <option value="tiny">Tiny</option>
                         <option value="base">Base</option>
                     </select>
                 </div>
                 <div id="custom-model-path" class="form-group" style="display: none;">
-                    <label>Model Path</label>
-                    <input type="text" id="model-path-input" name="model_path" placeholder="Enter absolute path to .pt model">
-                    <p>Leave empty to use default YOLOv10x</p>
+                    <label>模型路径</label>
+                    <input type="text" id="model-path-input" name="model_path" placeholder="输入.pt模型的绝对路径">
+                    <p>留空使用默认YOLOv10x</p>
                 </div>
                 <div class="form-group">
-                    <label>Processing Unit</label>
+                    <label>处理单元</label>
                     <select id="processing-unit">
                         <option value="cpu">CPU</option>
                         <option value="cuda">GPU</option>
                     </select>
-                    <p id="cpu-warning" style="display: none; color: orange;">Warning: CPU processing may take longer.</p>
+                    <p id="cpu-warning" style="display: none; color: orange;">警告：CPU处理可能需要更长时间。</p>
                 </div>
                 <div class="form-group">
-                    <label>Box Threshold</label>
+                    <label>框阈值</label>
                     <input type="number" id="box-threshold" name="box_threshold" min="0" max="1" step="0.01" value="0.2">
-                    <p>Adjust detection sensitivity (0 to 1)</p>
+                    <p>调整检测敏感度（0到1）</p>
                 </div>
-                <button type="submit" class="create-btn">Apply</button>
+                <button type="submit" class="create-btn">应用</button>
             </form>
         </div>
     </div>
     <div class="modal" id="blind-trust-modal">
         <div class="modal-content ai-modal-content">
             <button class="close-btn">×</button>
-            <h2>Blind Trust Configuration</h2>
+            <h2>盲信任配置</h2>
             <form id="blind-trust-form">
                 <div class="form-group">
-                    <label>Confidence Threshold</label>
+                    <label>置信度阈值</label>
                     <input type="number" id="confidence-threshold" name="confidence_threshold" min="0" max="1" step="0.01" value="0.5">
-                    <p>Minimum confidence for pre-annotations to be accepted as official annotations (0 to 1)</p>
+                    <p>预标注被接受为正式标注的最低置信度（0到1）</p>
                 </div>
-                <button type="submit" class="create-btn">Apply</button>
+                <button type="submit" class="create-btn">应用</button>
             </form>
         </div>
     </div>
