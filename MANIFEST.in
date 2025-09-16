@@ -1,0 +1,4 @@
+graft visiofirm/static
+graft visiofirm/templates
+include LICENSE
+include README.md
