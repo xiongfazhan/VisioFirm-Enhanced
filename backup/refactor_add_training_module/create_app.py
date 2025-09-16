@@ -16,11 +16,9 @@ def create_app():
     from visiofirm.routes.dashboard import bp as dashboard_bp
     from visiofirm.routes.annotation import bp as annotation_bp
     from visiofirm.routes.auth import bp as auth_bp
-    from visiofirm.routes.training import bp as training_bp
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(annotation_bp)
     app.register_blueprint(auth_bp)
-    app.register_blueprint(training_bp)
 
     @app.route('/projects/<path:filename>')
     def serve_project_file(filename):

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - VisioFirm</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        html, body {
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .top-bar {
+            background: var(--card-bg);
+            padding: 0 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            height: 64px;
+            position: relative;
+            z-index: 100;
+        }
+        
+        .top-bar img {
+            height: 40px;
+            margin-left: 16px;
+        }
+
+        main {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .top-bar h1 a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 2.25rem;
+            font-weight: 600;
+        }
+
+        .nav-links {
+            margin-left: auto;
+        }
+
+        .nav-links a {
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+
+        .menu-icon {
+            color: var(--text-color);
+            font-size: 24px;
+            cursor: pointer;
+            margin-right: 16px;
+            transition: var(--transition);
+        }
+
+        .menu-icon:hover {
+            color: var(--primary-color);
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 64px;
+            left: -150px;
+            width: 150px;
+            height: calc(100% - 64px);
+            background: #333333;
+            box-shadow: var(--shadow);
+            z-index: 1001;
+            transition: left 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .sidebar-header span {
+            font-weight: 500;
+            font-size: 1.2rem;
+            color: #e0e0e0;
+        }
+
+        .sidebar-menu {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            color: #e0e0e0;
+            text-decoration: none;
+            padding: 10px 0;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .sidebar-menu a:hover {
+            color: #3498db;
+        }
+
+        .sidebar-menu a i {
+            margin-right: 10px;
+            font-size: 18px;
+            color: #e0e0e0;
+        }
+
+        .sidebar-menu a:hover i {
+            color: #3498db;
+        }
+
+        /* Glitch animation for Profile */
+        @keyframes glitch {
+            0% { transform: translate(0); opacity: 1; }
+            10% { transform: translate(-2px, 2px); opacity: 0.8; }
+            20% { transform: translate(2px, -2px); opacity: 0.6; }
+            30% { transform: translate(-2px, 2px); opacity: 0.8; }
+            40% { transform: translate(2px, -2px); opacity: 1; }
+            100% { transform: translate(0); opacity: 1; }
+        }
+
+        .sidebar-menu a.profile:hover i {
+            animation: glitch 0.3s linear infinite;
+        }
+
+        /* Rotate animation for Settings */
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .sidebar-menu a.settings:hover i {
+            animation: rotate 1s linear infinite;
+        }
+
+        /* Blink red animation for Logout */
+        @keyframes blink {
+            0% { color: #e0e0e0; }
+            50% { color: #ff0000; }
+            100% { color: #e0e0e0; }
+        }
+
+        .sidebar-menu a.logout:hover i {
+            animation: blink 0.5s step-end infinite;
+        }
+
+        .flash-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1002;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .flash-modal.success {
+            border-left: 4px solid #28a745;
+        }
+
+        .flash-modal.error {
+            border-left: 4px solid #dc3545;
+        }
+
+        .flash-modal p {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .flash-modal.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-modal {{ category }}">
+                    <p>{{ message }}</p>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <header>
+        <nav class="top-bar">
+            <div class="menu-icon">
+                <i class="fa-solid fa-bars"></i>
+            </div>
+            <h1>
+                <img src="{{ url_for('static', filename='img/VisioFirm_logo.png') }}" alt="VisioFirm Logo">
+                <a href="/">VisioFirm</a>
+            </h1>
+            <div class="nav-links">
+                <a href="/">Dashboard</a>
+            </div>
+        </nav>
+        <div class="sidebar">
+            <div class="sidebar-header">
+                {% if current_user.is_authenticated %}
+                    <span>{{ current_user.username }}</span>
+                {% else %}
+                    <span>Guest</span>
+                {% endif %}
+            </div>
+            <div class="sidebar-menu">
+                {% if current_user.is_authenticated %}
+                    <a href="/profile" class="profile"><i class="fa-solid fa-user"></i> Profile</a>
+                    <a href="/logout" class="logout"><i class="fa-solid fa-sign-out-alt"></i> Logout</a>
+                {% else %}
+                    <a href="/login"><i class="fa-solid fa-sign-in-alt"></i> Sign In</a>
+                    <a href="/register"><i class="fa-solid fa-user-plus"></i> Sign Up</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const menuIcon = document.querySelector('.menu-icon');
+            const sidebar = document.querySelector('.sidebar');
+            const flashModals = document.querySelectorAll('.flash-modal');
+            
+            menuIcon.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+
+            // Close sidebar when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!sidebar.contains(e.target) && !menuIcon.contains(e.target)) {
+                    sidebar.classList.remove('open');
+                }
+            });
+
+            // Show and auto-dismiss flash modals
+            flashModals.forEach(modal => {
+                modal.classList.add('show');
+                setTimeout(() => {
+                    modal.classList.remove('show');
+                    setTimeout(() => modal.remove(), 300); // Remove after fade-out
+                }, 3000);
+            });
+        });
+    </script>
+</body>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</html>

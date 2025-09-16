@@ -1,115 +1,6 @@
 {% extends "labeler_base.html" %}
 {% block title %}仪表板{% endblock %}
 {% block content %}
-<style>
-    .project-actions {
-        display: flex;
-        gap: 8px;
-        margin: 10px 0;
-    }
-    
-    .action-btn {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        padding: 8px 4px;
-        border: 1px solid #e0e0e0;
-        border-radius: 6px;
-        background: white;
-        color: #333;
-        text-decoration: none;
-        font-size: 12px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .action-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .annotation-btn:hover {
-        background: linear-gradient(45deg, #007bff, #00c4ff);
-        color: white;
-        border-color: #007bff;
-    }
-    
-    .training-btn:hover {
-        background: linear-gradient(45deg, #28a745, #20c997);
-        color: white;
-        border-color: #28a745;
-    }
-    
-    .action-btn i {
-        font-size: 16px;
-    }
-    
-    .action-btn span {
-        font-weight: 500;
-    }
-    
-    .project-info {
-        position: relative;
-    }
-    
-    .menu-btn {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        background: none;
-        border: none;
-        font-size: 18px;
-        cursor: pointer;
-        color: #666;
-        padding: 5px;
-        border-radius: 4px;
-        transition: all 0.3s ease;
-    }
-    
-    .menu-btn:hover {
-        background: #f0f0f0;
-        color: #333;
-    }
-    
-    .menu-dropdown {
-        position: absolute;
-        top: 35px;
-        right: 5px;
-        background: white;
-        border: 1px solid #e0e0e0;
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
-        min-width: 120px;
-    }
-    
-    .menu-dropdown button {
-        display: block;
-        width: 100%;
-        padding: 8px 12px;
-        border: none;
-        background: none;
-        text-align: left;
-        cursor: pointer;
-        font-size: 14px;
-        color: #333;
-        transition: background 0.3s ease;
-    }
-    
-    .menu-dropdown button:hover {
-        background: #f8f9fa;
-    }
-    
-    .menu-dropdown button:first-child {
-        border-radius: 6px 6px 0 0;
-    }
-    
-    .menu-dropdown button:last-child {
-        border-radius: 0 0 6px 6px;
-    }
-</style>
 <div class="dashboard">
     <div class="header">
         <h2>项目</h2>
@@ -117,7 +8,7 @@
     </div>
     <div class="projects-grid">
         {% for project in projects %}
-            <div class="project-card" data-project="{{ project.name }}">
+            <div class="project-card" data-project="{{ project.name }}" onclick="window.location.href='/annotation/{{ project.name }}'">
                 <div class="project-images">
                     {% for img in project.images %}
                         <img src="{{ img }}" alt="Project image">
@@ -125,18 +16,8 @@
                 </div>
                 <div class="project-info">
                     <span class="project-name">{{ project.name }}</span>
-                    <div class="project-actions">
-                        <button class="action-btn annotation-btn" onclick="window.location.href='/annotation/{{ project.name }}'" title="图像标注">
-                            <i class="fas fa-tags"></i>
-                            <span>标注</span>
-                        </button>
-                        <button class="action-btn training-btn" onclick="window.location.href='/training/{{ project.name }}'" title="模型训练">
-                            <i class="fas fa-brain"></i>
-                            <span>训练</span>
-                        </button>
-                    </div>
-                    <button class="menu-btn" onclick="toggleMenu(event, '{{ project.name }}')">⋮</button>
-                    <div class="menu-dropdown" style="display: none;" id="menu-{{ project.name }}">
+                    <button class="menu-btn">⋮</button>
+                    <div class="menu-dropdown" style="display: none;">
                         <button class="overview-btn" data-project="{{ project.name }}">概览</button>
                         <button class="import-btn" data-project="{{ project.name }}">添加图片</button>
                         <button class="delete-btn" data-project="{{ project.name }}">删除</button>
@@ -965,24 +846,6 @@
     document.addEventListener('DOMContentLoaded', () => {
         hideLoadingOverlay();
     });
-
-    // Toggle menu function
-    function toggleMenu(event, projectName) {
-        event.stopPropagation();
-        const menu = document.getElementById('menu-' + projectName);
-        const isVisible = menu.style.display === 'block';
-        
-        // Hide all other menus
-        document.querySelectorAll('.menu-dropdown').forEach(dropdown => {
-            dropdown.style.display = 'none';
-        });
-        
-        // Toggle current menu
-        menu.style.display = isVisible ? 'none' : 'block';
-    }
-
-    // Make toggleMenu globally available
-    window.toggleMenu = toggleMenu;
 
     overviewCloseBtn.addEventListener('click', () => {
         overviewModal.style.display = 'none';

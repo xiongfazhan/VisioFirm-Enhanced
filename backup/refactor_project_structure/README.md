@@ -49,32 +49,6 @@
 
 ---
 
----
-
-## 📁 项目结构 / Project Structure
-
-```
-VisioFirm/
-├── README.md                 # 项目主要说明 / Main documentation
-├── CHANGELOG_ENHANCED.md     # 更新日志 / Change log
-├── LICENSE                   # 许可证文件 / License file
-├── setup.py                  # 安装配置 / Installation config
-├── requirements.txt          # 依赖包列表 / Dependencies
-├── run.py                    # 启动脚本 / Launch script
-├── visiofirm/               # 主要源代码 / Main source code
-│   ├── models/              # 数据模型 / Data models
-│   ├── routes/              # 路由模块 / Route modules
-│   ├── static/              # 静态资源 / Static resources
-│   ├── templates/           # HTML模板 / HTML templates
-│   └── utils/               # 工具函数 / Utility functions
-├── tests/                   # 测试文件 / Test files
-├── docs/                    # 项目文档 / Documentation
-├── examples/                # 示例文件 / Example files
-└── backup/                  # 备份文件 / Backup files
-```
-
----
-
 **VisioFirm** is an open-source, AI-powered image annotation tool designed to accelerate labeling for computer vision tasks like object detection, oriented bounding boxes (OBB), and segmentation. Built for speed and simplicity, it leverages state-of-the-art models for semi-automated pre-annotations, allowing you to focus on refining rather than starting from scratch. Whether you're preparing datasets for YOLO, SAM, or custom models, VisioFirm streamlines your workflow with a intuitive web interface and powerful backend.
 
 Perfect for researchers, data scientists, and ML engineers handling large image datasets—get high-quality annotations in minutes, not hours!

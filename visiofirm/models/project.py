@@ -554,3 +554,61 @@ class Project:
             counts = [row[0] for row in cursor.fetchall()]
             #logger.info(f"Annotations per image for project {self.name}: {counts}")
             return counts
+
+    def get_annotated_images(self):
+        """获取所有已标注的图像信息"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT DISTINCT i.image_id, i.absolute_path, i.width, i.height,
+                       LENGTH(TRIM(COALESCE(i.absolute_path, ''))) > 0 as has_path
+                FROM Images i
+                INNER JOIN Annotations a ON i.image_id = a.image_id
+                ORDER BY i.image_id
+            ''')
+            annotated_images = []
+            for row in cursor.fetchall():
+                if row[4]:  # has_path check
+                    annotated_images.append({
+                        'id': row[0],
+                        'path': row[1],
+                        'name': os.path.basename(row[1]) if row[1] else f'image_{row[0]}',
+                        'width': row[2],
+                        'height': row[3]
+                    })
+            logger.info(f"Retrieved {len(annotated_images)} annotated images for project {self.name}")
+            return annotated_images
+
+    def get_annotations_by_image_id(self, image_id):
+        """根据图像ID获取标注信息"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT annotation_id, type, class_name, x, y, width, height, rotation, segmentation
+                FROM Annotations WHERE image_id = ?
+            ''', (image_id,))
+            annotations = []
+            for row in cursor.fetchall():
+                anno = {
+                    'annotation_id': row[0],
+                    'type': row[1],
+                    'class_name': row[2],
+                    'x': row[3],
+                    'y': row[4],
+                    'width': row[5],
+                    'height': row[6],
+                    'rotation': row[7] or 0
+                }
+                if row[8]:  # segmentation
+                    try:
+                        segmentation = json.loads(row[8])
+                        if isinstance(segmentation, list):
+                            anno['points'] = [{'x': segmentation[i], 'y': segmentation[i+1]} 
+                                            for i in range(0, len(segmentation), 2)]
+                    except (json.JSONDecodeError, TypeError) as e:
+                        logger.error(f"Error parsing segmentation for annotation {row[0]}: {e}")
+                        anno['points'] = []
+                else:
+                    anno['points'] = []
+                annotations.append(anno)
+            return annotations
