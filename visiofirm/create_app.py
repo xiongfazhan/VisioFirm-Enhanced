@@ -3,11 +3,17 @@ from flask_login import LoginManager
 from visiofirm.config import PROJECTS_FOLDER
 from visiofirm.models.user import init_db, get_user_by_id, User
 import os
+import mimetypes
 
 def create_app():
     app = Flask(__name__, template_folder='templates', static_folder='static')
     app.secret_key = 'VISIOFIRM'
     app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB limit
+
+    # 修复静态文件 MIME 类型配置
+    mimetypes.add_type('application/javascript', '.js')
+    mimetypes.add_type('text/css', '.css')
+    mimetypes.add_type('application/json', '.json')
 
     os.makedirs(PROJECTS_FOLDER, exist_ok=True)
     with app.app_context():
