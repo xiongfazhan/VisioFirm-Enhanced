@@ -20,3 +20,10 @@ def get_db_path():
 PROJECTS_FOLDER = get_cache_folder()
 VALID_IMAGE_EXTENSIONS = {'.webp', '.jpg', '.jpeg', '.JPG', '.JPEG', '.png', '.avif'}
 WEIGHTS_FOLDER = os.path.join(get_cache_folder(), 'weights')
+
+# 数据集管理配置
+DATASETS_FOLDER = os.path.join(PROJECTS_FOLDER, 'datasets')
+DATASET_DOWNLOAD_TEMP = os.path.join(DATASETS_FOLDER, 'temp')
+MAX_DATASET_SIZE = 50 * 1024 * 1024 * 1024  # 50GB
+DOWNLOAD_TIMEOUT = 3600  # 1小时超时
+CONCURRENT_DOWNLOADS = 2  # 最大并发下载数

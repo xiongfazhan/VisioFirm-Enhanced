@@ -5,8 +5,8 @@ from rapidfuzz.distance import Levenshtein
 from PIL import Image
 import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with less verbose output
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def is_valid_image(file_path):

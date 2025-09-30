@@ -21,8 +21,8 @@ from visiofirm.config import PROJECTS_FOLDER, VALID_IMAGE_EXTENSIONS, get_cache_
 from visiofirm.models.project import Project
 from visiofirm.utils import CocoAnnotationParser, YoloAnnotationParser, NameMatcher, is_valid_image
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with less verbose output
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 bp = Blueprint('dashboard', __name__)

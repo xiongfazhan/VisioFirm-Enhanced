@@ -12,15 +12,20 @@ def create_app():
     os.makedirs(PROJECTS_FOLDER, exist_ok=True)
     with app.app_context():
         init_db()
+        # 初始化数据集数据库
+        from visiofirm.models.dataset import init_dataset_db
+        init_dataset_db()
 
     from visiofirm.routes.dashboard import bp as dashboard_bp
     from visiofirm.routes.annotation import bp as annotation_bp
     from visiofirm.routes.auth import bp as auth_bp
     from visiofirm.routes.training import bp as training_bp
+    from visiofirm.routes.dataset import bp as dataset_bp
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(annotation_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(training_bp)
+    app.register_blueprint(dataset_bp)
 
     @app.route('/projects/<path:filename>')
     def serve_project_file(filename):

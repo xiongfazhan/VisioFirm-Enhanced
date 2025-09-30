@@ -5,9 +5,11 @@ import logging
 from datetime import datetime
 from visiofirm.config import PROJECTS_FOLDER
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with less verbose output - 强制设置根logger级别
+logging.basicConfig(level=logging.WARNING, force=True)
 logger = logging.getLogger(__name__)
+# 额外确保当前模块的logger级别正确
+logger.setLevel(logging.WARNING)
 
 class TrainingTask:
     def __init__(self, project_name, project_path):
@@ -84,7 +86,7 @@ class TrainingTask:
                 ''')
                 
                 conn.commit()
-                logger.info(f"Training database initialized for project: {self.project_name}")
+                # 初始化成功，不输出日志避免重复信息
                 
         except Exception as e:
             logger.error(f"Failed to initialize training database: {e}")
@@ -114,7 +116,7 @@ class TrainingTask:
                             )
                         ''')
                         conn.commit()
-                        logger.info(f"Training database initialized for project: {self.project_name}")
+                        # 数据库修复成功，不输出重复日志
                 else:
                     raise
             except Exception as retry_error:
@@ -134,7 +136,7 @@ class TrainingTask:
                 
                 task_id = cursor.lastrowid
                 conn.commit()
-                logger.info(f"Created training task: {task_name} with ID: {task_id}")
+                # 任务创建成功，不输出日志避免干扰
                 return task_id
                 
         except Exception as e:
@@ -211,7 +213,7 @@ class TrainingTask:
                 cursor.execute(query, update_values)
                 conn.commit()
                 
-                logger.info(f"Updated task {task_id} status to {status}")
+                # 任务状态更新成功，不输出日志避免干扰
                 
         except Exception as e:
             logger.error(f"Failed to update task status: {e}")
@@ -266,7 +268,7 @@ class TrainingTask:
                 
                 config_id = cursor.lastrowid
                 conn.commit()
-                logger.info(f"Saved training config: {config_name}")
+                # 配置保存成功，不输出日志避免干扰
                 return config_id
                 
         except Exception as e:

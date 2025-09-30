@@ -6,8 +6,8 @@ import math
 import logging
 from visiofirm.utils import CocoAnnotationParser, YoloAnnotationParser, NameMatcher, is_valid_image
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with less verbose output
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 class Project:

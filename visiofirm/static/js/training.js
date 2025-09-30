@@ -205,19 +205,11 @@ async function createTask() {
     try {
         showLoading('正在创建训练任务...');
         
-        const response = await fetch('/training/create_task', {
+        const result = await makeAPICall('/training/create_task', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify(taskData)
         });
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
         hideLoading();
         
         if (result.success) {
@@ -311,30 +303,297 @@ async function makeAPICall(url, options = {}) {
     try {
         const response = await fetch(url, defaultOptions);
         
+        // 检查是否被重定向到登录页面
+        if (response.url.includes('/login') || response.redirected) {
+            throw new Error('AUTHENTICATION_REQUIRED');
+        }
+        
         if (!response.ok) {
             let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
             
             // 尝试解析错误信息
             try {
-                const errorData = await response.json();
-                if (errorData.error) {
-                    errorMessage = errorData.error;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const errorData = await response.json();
+                    if (errorData.error) {
+                        errorMessage = errorData.error;
+                    }
+                } else {
+                    // 如果返回的是HTML，检查是否是登录页面
+                    const text = await response.text();
+                    if (text.includes('<title>登录') || text.includes('login-form')) {
+                        throw new Error('AUTHENTICATION_REQUIRED');
+                    }
                 }
             } catch (e) {
-                // 如果无法解析JSON，使用默认错误信息
+                // 如果无法解析，继续使用默认错误信息
+                if (e.message === 'AUTHENTICATION_REQUIRED') {
+                    throw e;
+                }
             }
             
             throw new Error(errorMessage);
         }
         
-        return await response.json();
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return await response.json();
+        } else {
+            // 如果不是JSON响应，可能是登录页面
+            const text = await response.text();
+            if (text.includes('<title>登录') || text.includes('login-form')) {
+                throw new Error('AUTHENTICATION_REQUIRED');
+            }
+            throw new Error('服务器返回了意外的响应格式');
+        }
         
     } catch (error) {
+        if (error.message === 'AUTHENTICATION_REQUIRED') {
+            handleAuthenticationRequired();
+            throw new Error('您需要先登录才能使用此功能');
+        }
+        
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
             throw new Error('网络连接失败，请检查网络连接');
         }
         throw error;
     }
+}
+
+// 处理需要认证的情况
+function handleAuthenticationRequired() {
+    // 显示登录提示模态框
+    showAuthenticationModal();
+}
+
+// 显示认证提示模态框
+function showAuthenticationModal() {
+    const modalHtml = `
+        <div class="auth-modal-overlay">
+            <div class="auth-modal">
+                <div class="auth-modal-header">
+                    <h3>🔐 需要登录</h3>
+                    <button class="close-btn" onclick="closeAuthModal()">&times;</button>
+                </div>
+                <div class="auth-modal-body">
+                    <div class="auth-icon">🔒</div>
+                    <p>您需要登录才能使用训练模块功能</p>
+                    <div class="auth-features">
+                        <div class="feature-item">
+                            <i class="fas fa-cogs"></i>
+                            <span>创建和管理训练任务</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-chart-line"></i>
+                            <span>监控训练进度</span>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-download"></i>
+                            <span>下载训练好的模型</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="auth-modal-footer">
+                    <button class="btn btn-secondary" onclick="closeAuthModal()">稍后登录</button>
+                    <button class="btn btn-primary" onclick="redirectToLogin()">立即登录</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 添加模态框样式
+    const style = document.createElement('style');
+    style.textContent = `
+        .auth-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .auth-modal {
+            background: white;
+            border-radius: 12px;
+            padding: 0;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s ease;
+        }
+        
+        .auth-modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(45deg, #007bff, #00c4ff);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .auth-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .auth-modal-header .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+        }
+        
+        .auth-modal-header .close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .auth-modal-body {
+            padding: 30px 24px;
+            text-align: center;
+        }
+        
+        .auth-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .auth-modal-body p {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        
+        .auth-features {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: left;
+        }
+        
+        .feature-item i {
+            color: #007bff;
+            font-size: 16px;
+            width: 20px;
+        }
+        
+        .feature-item span {
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .auth-modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        
+        .auth-modal .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-modal .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .auth-modal .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+        
+        .auth-modal .btn-primary {
+            background: linear-gradient(45deg, #007bff, #00c4ff);
+            color: white;
+        }
+        
+        .auth-modal .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translateY(-20px) scale(0.95);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    `;
+    
+    document.head.appendChild(style);
+    
+    // 创建模态框元素
+    const modalElement = document.createElement('div');
+    modalElement.innerHTML = modalHtml;
+    modalElement.id = 'auth-modal';
+    document.body.appendChild(modalElement);
+}
+
+// 关闭认证模态框
+function closeAuthModal() {
+    const modal = document.getElementById('auth-modal');
+    if (modal) {
+        modal.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            modal.remove();
+        }, 300);
+    }
+}
+
+// 重定向到登录页面
+function redirectToLogin() {
+    window.location.href = '/login';
 }
 // 启动训练任务
 async function startTask(taskId) {
@@ -409,18 +668,14 @@ async function deleteTask(taskId) {
     try {
         showLoading('正在删除训练任务...');
         
-        const response = await fetch('/training/delete_task', {
+        const result = await makeAPICall('/training/delete_task', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
                 project_name: window.projectName,
                 task_id: parseInt(taskId)
             })
         });
         
-        const result = await response.json();
         hideLoading();
         
         if (result.success) {
@@ -435,6 +690,7 @@ async function deleteTask(taskId) {
         }
     } catch (error) {
         hideLoading();
+        console.error('Delete task error:', error);
         showAlert('删除失败: ' + error.message, 'error');
     }
 }

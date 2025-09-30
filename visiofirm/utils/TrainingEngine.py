@@ -13,8 +13,8 @@ from visiofirm.models.training import TrainingTask
 from visiofirm.utils.performance_config import performance_manager
 import shutil
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging with less verbose output
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 class TrainingEngine:
@@ -273,6 +273,19 @@ class TrainingEngine:
             self.training_task.update_task_status(task_id, 'failed', 0, str(e))
             return False
 
+    def _get_optimal_device(self, requested_device='auto'):
+        """获取最优的训练设备"""
+        if requested_device != 'auto':
+            return requested_device
+        
+        if torch.cuda.is_available() and torch.cuda.device_count() > 0:
+            optimal_device = 'cuda:0'
+            logger.info(f"检测到CUDA设备，使用: {optimal_device}")
+            return optimal_device
+        else:
+            logger.info("未检测到CUDA设备，使用CPU训练")
+            return 'cpu'
+
     def _run_training(self, task_id, model_type, dataset_split, config):
         """执行训练过程"""
         try:
@@ -286,6 +299,9 @@ class TrainingEngine:
             else:
                 raise ValueError(f"不支持的模型类型: {model_type}")
             
+            # 获取最优设备
+            optimal_device = self._get_optimal_device(config.get('device', 'auto'))
+            
             # 设置训练参数
             train_args = {
                 'data': dataset_yaml,
@@ -293,7 +309,7 @@ class TrainingEngine:
                 'batch': config.get('batch_size', 16),
                 'imgsz': config.get('image_size', 640),
                 'lr0': config.get('learning_rate', 0.01),
-                'device': config.get('device', 'auto'),
+                'device': optimal_device,
                 'project': os.path.join(self.project_path, 'training_runs'),
                 'name': f"task_{task_id}",
                 'save_period': 10,  # 每10个epoch保存一次
@@ -417,9 +433,51 @@ class TrainingEngine:
             # 确保任务在结束时被注销
             performance_manager.unregister_task(task_id)
 
-    def stop_training_task(self, task_id):
-        """停止训练任务"""
+    def _check_and_fix_task_status(self, task_id):
+        """检查并修复任务状态不一致问题"""
         try:
+            db_task = self.training_task.get_task_details(task_id)
+            if not db_task:
+                return None, "任务不存在"
+            
+            # 检查状态一致性
+            db_running = db_task['status'] == 'running'
+            thread_running = (self.current_task_id == task_id and 
+                             self.training_thread and 
+                             self.training_thread.is_alive())
+            
+            # 状态不一致时自动修复
+            if db_running and not thread_running:
+                logger.warning(f"检测到状态不一致，自动修复任务 {task_id}")
+                self.training_task.update_task_status(task_id, 'failed', None, "训练进程异常结束")
+                performance_manager.unregister_task(task_id)  # 清理性能管理器
+                return 'fixed', "状态已自动修复"
+            
+            return db_task['status'], None
+            
+        except Exception as e:
+            logger.error(f"检查任务状态失败: {e}")
+            return None, str(e)
+
+    def stop_training_task(self, task_id):
+        """停止训练任务（增强版）"""
+        try:
+            # 检查并修复状态
+            status, message = self._check_and_fix_task_status(task_id)
+            
+            if status is None:
+                logger.error(f"任务 {task_id} 不存在或检查失败: {message}")
+                return False
+            
+            if status == 'fixed':
+                logger.info(f"任务 {task_id} 状态已修复: {message}")
+                return True
+            
+            if status != 'running':
+                logger.warning(f"任务 {task_id} 当前状态为 {status}，无需停止")
+                return False
+            
+            # 正常停止流程
             if self.current_task_id == task_id and self.training_thread and self.training_thread.is_alive():
                 self.stop_training = True
                 self.training_thread.join(timeout=30)  # 等待最多30秒
@@ -431,8 +489,11 @@ class TrainingEngine:
                 logger.info(f"训练任务 {task_id} 已停止")
                 return True
             else:
-                logger.warning(f"训练任务 {task_id} 未在运行中")
-                return False
+                # 强制状态修复 - 数据库显示运行但线程已结束
+                logger.warning(f"强制修复任务 {task_id} 状态")
+                self.training_task.update_task_status(task_id, 'stopped', None, "强制停止")
+                performance_manager.unregister_task(task_id)
+                return True
                 
         except Exception as e:
             logger.error(f"停止训练任务失败: {e}")

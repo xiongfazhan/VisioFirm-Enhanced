@@ -1,0 +1,31 @@
+[run]
+# 覆盖率数据源
+source = .
+omit = 
+    */tests/*
+    */venv/*
+    */__pycache__/*
+    */site-packages/*
+    setup.py
+    conftest.py
+
+[report]
+# 报告设置
+precision = 2
+show_missing = True
+skip_covered = False
+
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml

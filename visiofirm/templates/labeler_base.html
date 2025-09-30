@@ -82,8 +82,8 @@
         .sidebar {
             position: fixed;
             top: 64px;
-            left: -150px;
-            width: 150px;
+            left: -200px;
+            width: 200px;
             height: calc(100% - 64px);
             background: #333333;
             box-shadow: var(--shadow);
@@ -115,7 +115,54 @@
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            justify-content: flex-end;
+            height: 100%;
+        }
+
+        .function-menu {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .menu-divider {
+            height: 1px;
+            background: #555;
+            margin: 20px 0;
+        }
+
+        .user-menu {
+            margin-top: auto;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            color: #e0e0e0;
+            text-decoration: none;
+            padding: 12px 0;
+            font-weight: 500;
+            transition: var(--transition);
+            border-radius: 6px;
+            margin: 2px 0;
+        }
+
+        .menu-item:hover {
+            color: #3498db;
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        .menu-item.active {
+            color: #3498db;
+            background: rgba(52, 152, 219, 0.2);
+        }
+
+        .menu-item i {
+            margin-right: 12px;
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
         }
 
         .sidebar-menu a {
@@ -210,6 +257,27 @@
         .flash-modal.show {
             display: block;
         }
+
+        /* 响应式设计 - 移动端优化 */
+        @media (max-width: 768px) {
+            .sidebar {
+                left: -250px;
+                width: 250px;
+            }
+            
+            .sidebar.open {
+                left: 0;
+            }
+            
+            .menu-item {
+                padding: 15px 0;
+                font-size: 18px;
+            }
+            
+            .menu-item i {
+                font-size: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -245,6 +313,21 @@
                 {% endif %}
             </div>
             <div class="sidebar-menu">
+                <!-- 功能菜单区域 -->
+                <div class="function-menu">
+                    <a href="/" class="menu-item" data-page="dashboard">
+                        <i class="fa-solid fa-folder"></i> 项目
+                    </a>
+                    <a href="/datasets" class="menu-item" data-page="datasets">
+                        <i class="fa-solid fa-database"></i> 数据集
+                    </a>
+                </div>
+                
+                <!-- 分隔线 -->
+                <div class="menu-divider"></div>
+                
+                <!-- 用户操作区域 -->
+                <div class="user-menu">
                 {% if current_user.is_authenticated %}
                     <a href="/profile" class="profile"><i class="fa-solid fa-user"></i> Profile</a>
                     <a href="/logout" class="logout"><i class="fa-solid fa-sign-out-alt"></i> Logout</a>
@@ -252,6 +335,7 @@
                     <a href="/login"><i class="fa-solid fa-sign-in-alt"></i> Sign In</a>
                     <a href="/register"><i class="fa-solid fa-user-plus"></i> Sign Up</a>
                 {% endif %}
+                </div>
             </div>
         </div>
     </header>
@@ -259,10 +343,30 @@
         {% block content %}{% endblock %}
     </main>
     <script>
+        // 页面活跃状态检测
+        function setActiveMenuItem() {
+            const currentPath = window.location.pathname;
+            const menuItems = document.querySelectorAll('.menu-item');
+            
+            menuItems.forEach(item => {
+                item.classList.remove('active');
+                const itemPath = new URL(item.href).pathname;
+                
+                if (currentPath === itemPath || 
+                    (currentPath === '/' && itemPath === '/') ||
+                    (currentPath.startsWith('/datasets') && itemPath === '/datasets')) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const menuIcon = document.querySelector('.menu-icon');
             const sidebar = document.querySelector('.sidebar');
             const flashModals = document.querySelectorAll('.flash-modal');
+            
+            // 设置活跃菜单项
+            setActiveMenuItem();
             
             menuIcon.addEventListener('click', () => {
                 sidebar.classList.toggle('open');

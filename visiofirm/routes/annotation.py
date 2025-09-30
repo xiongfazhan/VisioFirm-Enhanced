@@ -15,7 +15,8 @@ import json
 import threading
 
 bp = Blueprint('annotation', __name__, url_prefix='/annotation')
-logging.basicConfig(level=logging.INFO)
+# 优化日志级别，减少输出
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # In-memory storage for pre-annotation and blind trust status

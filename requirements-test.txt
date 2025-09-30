@@ -1,0 +1,23 @@
+# VisioFirm 测试依赖
+
+# 核心测试框架
+pytest==7.4.0
+pytest-cov==4.1.0
+pytest-mock==3.11.1
+pytest-asyncio==0.21.1
+pytest-timeout==2.1.0
+pytest-xdist==3.3.1
+
+# Mock和测试工具
+responses==0.23.1
+faker==19.2.0
+factory-boy==3.2.1
+
+# 覆盖率报告
+coverage==7.3.0
+
+# 测试数据生成
+Pillow>=9.4.0
+
+# HTTP测试
+requests-mock==1.11.0

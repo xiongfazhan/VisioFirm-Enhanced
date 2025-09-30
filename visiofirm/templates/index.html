@@ -201,22 +201,48 @@
             <div class="tab-content" id="import">
                 <div class="form-group">
                     <label>数据导入 *</label>
-                    <div class="drop-zone" id="drop-zone">
-                        <i class="fa-solid fa-file-arrow-down drop-icon"></i>
-                        <p>将图片/文件夹/压缩包拖拽到此处。</p>
-                        <p><strong>支持的文件格式：</strong></p>
-                        <p>图片：.webp, .jpg, .jpeg, .png, .avif</p>
-                        <p>包含图片的压缩文件：.zip, .tar, .rar</p>
-                        <p>图片文件夹</p>
-                        <p id="compress-message" class="compress-message" style="display: none;">检测到压缩文件！将在提交时解压。如果您有标注文件，它们将在项目创建后添加。</p>
-                    </div>
-                    <input type="file" id="file-input" name="files" multiple 
-                        accept=".webp,.WEBP,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.avif,.AVIF,.zip,.ZIP,.tar,.TAR,.rar,.RAR" 
-                        style="display: none;" webkitdirectory directory>
-                    <div id="file-list" class="file-list" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
-                    <div id="loading-waiter" class="loading-waiter" style="display: none;">
-                        <div class="spinner"></div>
-                        <p>正在处理图片...</p>
+                    
+                    <!-- 数据导入方式选择 -->
+                    <div class="import-method-selector">
+                        <div class="method-tabs">
+                            <button type="button" class="method-tab active" data-method="upload" onclick="switchImportMethod('upload')">
+                                <i class="fa-solid fa-upload"></i> 上传文件
+                            </button>
+                            <button type="button" class="method-tab" data-method="dataset" onclick="switchImportMethod('dataset')">
+                                <i class="fa-solid fa-database"></i> 选择数据集
+                            </button>
+                        </div>
+                        
+                        <!-- 文件上传区域 -->
+                        <div class="import-method-content active" id="upload-content">
+                            <div class="drop-zone" id="drop-zone">
+                                <i class="fa-solid fa-file-arrow-down drop-icon"></i>
+                                <p>将图片/文件夹/压缩包拖拽到此处。</p>
+                                <p><strong>支持的文件格式：</strong></p>
+                                <p>图片：.webp, .jpg, .jpeg, .png, .avif</p>
+                                <p>包含图片的压缩文件：.zip, .tar, .rar</p>
+                                <p>图片文件夹</p>
+                                <p id="compress-message" class="compress-message" style="display: none;">检测到压缩文件！将在提交时解压。如果您有标注文件，它们将在项目创建后添加。</p>
+                            </div>
+                            <input type="file" id="file-input" name="files" multiple 
+                                accept=".webp,.WEBP,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.avif,.AVIF,.zip,.ZIP,.tar,.TAR,.rar,.RAR" 
+                                style="display: none;" webkitdirectory directory>
+                            <div id="file-list" class="file-list" style="display: none; max-height: 200px; overflow-y: auto; margin-top: 10px;"></div>
+                            <div id="loading-waiter" class="loading-waiter" style="display: none;">
+                                <div class="spinner"></div>
+                                <p>正在处理图片...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- 数据集选择区域 -->
+                        <div class="import-method-content" id="dataset-content">
+                            <div class="dataset-selector-wrapper">
+                                <div id="projectDatasetSelector" class="project-dataset-selector">
+                                    <div class="loading">正在加载数据集...</div>
+                                </div>
+                                <input type="hidden" id="selected-datasets" name="selected_datasets" value="">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div id="progress-container" style="margin-top: 10px;"></div>
@@ -348,6 +374,7 @@
 }
 .create-btn-container {
     position: relative;
+
 }
 
 #annotation-summary {
@@ -397,6 +424,120 @@
 .class-suggestions {
     background-color: #3498db4b;
     margin-top: 10px;
+}
+
+/* 数据集选择器样式 */
+.import-method-selector {
+    margin-top: 15px;
+}
+
+.method-tabs {
+    display: flex;
+    border-bottom: 2px solid #e1e1e1;
+    margin-bottom: 20px;
+}
+
+.method-tab {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.method-tab:hover {
+    background: #f8f9fa;
+    color: #333;
+}
+
+.method-tab.active {
+    color: #3498db;
+    border-bottom-color: #3498db;
+    background: #f8f9fa;
+}
+
+.import-method-content {
+    display: none;
+}
+
+.import-method-content.active {
+    display: block;
+}
+
+.dataset-selector-wrapper {
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    padding: 20px;
+    background: #f8f9fa;
+}
+
+.project-dataset-selector {
+    min-height: 300px;
+}
+
+.project-dataset-selector .loading {
+    text-align: center;
+    color: #666;
+    padding: 40px;
+}
+
+/* 为数据集选择器定制样式 */
+.project-dataset-selector .dataset-selector {
+    border: none;
+    background: transparent;
+}
+
+.project-dataset-selector .selector-header {
+    padding: 0 0 15px 0;
+    border-bottom: 1px solid #e1e1e1;
+    margin-bottom: 15px;
+}
+
+.project-dataset-selector .selector-header h3 {
+    font-size: 18px;
+    margin: 0;
+}
+
+.project-dataset-selector .selector-search-input {
+    width: 250px;
+}
+
+.project-dataset-selector .selector-content {
+    max-height: 350px;
+}
+
+.project-dataset-selector .selector-footer {
+    padding: 15px 0 0 0;
+    border-top: 1px solid #e1e1e1;
+    margin-top: 15px;
+}
+
+.project-dataset-selector .selector-dataset-item {
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.project-dataset-selector .selector-dataset-item:hover {
+    transform: none;
+}
+
+.project-dataset-selector .selector-empty-state {
+    padding: 40px 20px;
+}
+
+.project-dataset-selector .btn {
+    padding: 8px 16px;
+    font-size: 14px;
 }
 #class-search {
     width: 50%;
@@ -1014,4 +1155,97 @@
         });
     });
 </script>
+
+<!-- 数据集管理相关脚本 -->
+<script src="{{ url_for('static', filename='js/datasetSelector.js') }}"></script>
+<script>
+    // 全局项目数据集选择器实例
+    let projectDatasetSelector;
+    
+    /**
+     * 切换导入方式
+     */
+    function switchImportMethod(method) {
+        // 切换标签页状态
+        document.querySelectorAll('.method-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelector(`[data-method="${method}"]`).classList.add('active');
+        
+        // 切换内容区域
+        document.querySelectorAll('.import-method-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`${method}-content`).classList.add('active');
+        
+        // 如果切换到数据集选择，初始化选择器
+        if (method === 'dataset' && !projectDatasetSelector) {
+            initializeProjectDatasetSelector();
+        }
+    }
+    
+    /**
+     * 初始化项目数据集选择器
+     */
+    async function initializeProjectDatasetSelector() {
+        try {
+            projectDatasetSelector = new DatasetSelector({
+                multiSelect: true,
+                onSelectionChange: (selectedDatasets) => {
+                    updateSelectedDatasetsInput(selectedDatasets);
+                },
+                onConfirm: (selectedDatasets) => {
+                    console.log('已选择数据集:', selectedDatasets);
+                    // 这里可以添加确认选择后的处理逻辑
+                }
+            });
+            
+            const success = await projectDatasetSelector.initialize('projectDatasetSelector');
+            if (!success) {
+                console.error('初始化数据集选择器失败');
+            }
+        } catch (error) {
+            console.error('初始化数据集选择器错误:', error);
+        }
+    }
+    
+    /**
+     * 更新隐藏的数据集选择输入字段
+     */
+    function updateSelectedDatasetsInput(selectedDatasets) {
+        const input = document.getElementById('selected-datasets');
+        if (input) {
+            const datasetIds = selectedDatasets.map(ds => ds.dataset_id);
+            input.value = JSON.stringify(datasetIds);
+        }
+    }
+    
+    /**
+     * 获取当前选择的导入方式
+     */
+    function getCurrentImportMethod() {
+        const activeTab = document.querySelector('.method-tab.active');
+        return activeTab ? activeTab.dataset.method : 'upload';
+    }
+    
+    /**
+     * 验证数据导入
+     */
+    function validateDataImport() {
+        const method = getCurrentImportMethod();
+        
+        if (method === 'upload') {
+            // 验证文件上传
+            const uploadId = getStoredUploadId();
+            return uploadId !== null;
+        } else if (method === 'dataset') {
+            // 验证数据集选择
+            const selectedDatasets = document.getElementById('selected-datasets').value;
+            return selectedDatasets && selectedDatasets !== '[]';
+        }
+        
+        return false;
+    }
+</script>
+
 {% endblock %}

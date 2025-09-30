@@ -13,23 +13,45 @@ import requests
 from groundingdino.util.inference import load_model, predict
 from groundingdino.datasets import transforms as T
 from visiofirm.config import WEIGHTS_FOLDER
+from tqdm import tqdm
 
 os.makedirs(WEIGHTS_FOLDER, exist_ok=True)
 
-logging.basicConfig(level=logging.INFO)
+# 设置较高的日志级别，减少输出
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def download_weight(url, filename):
+    """下载模型权重文件，显示进度条"""
     path = os.path.join(WEIGHTS_FOLDER, filename)
     if not os.path.exists(path):
-        logger.info(f"Downloading {filename} from {url}")
-        r = requests.get(url, stream=True)
-        if r.status_code == 200:
-            with open(path, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        else:
-            raise ValueError(f"Failed to download {url}")
+        print(f"正在下载模型 {filename}...")
+        
+        try:
+            # 获取文件大小
+            response = requests.head(url)
+            total_size = int(response.headers.get('content-length', 0))
+            
+            # 开始下载
+            r = requests.get(url, stream=True)
+            if r.status_code == 200:
+                with open(path, 'wb') as f:
+                    # 使用tqdm显示进度条
+                    with tqdm(total=total_size, unit='B', unit_scale=True, 
+                             desc=filename, ncols=80) as pbar:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                                pbar.update(len(chunk))
+                print(f"✓ {filename} 下载完成")
+            else:
+                raise ValueError(f"下载失败: {url} (状态码: {r.status_code})")
+        except Exception as e:
+            if os.path.exists(path):
+                os.remove(path)  # 清理不完整的文件
+            raise ValueError(f"下载 {filename} 时出错: {e}")
+    else:
+        print(f"✓ {filename} 已存在，跳过下载")
     return path
 
 

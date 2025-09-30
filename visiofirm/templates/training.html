@@ -1,6 +1,12 @@
 {% extends "labeler_base.html" %}
 {% block title %}{{ project_name }} - 模型训练{% endblock %}
 {% block content %}
+<!-- 模板数据传递 -->
+<div id="template-data" 
+     style="display: none;" 
+     data-project-name="{{ project_name | default('') | e }}" 
+     data-is-authenticated="{{ current_user.is_authenticated | string | lower }}"></div>
+
 <style>
     .training-dashboard {
         padding: 20px;
@@ -857,7 +863,7 @@
                             <div><strong>创建时间:</strong> {{ task.created_at[:16] }}</div>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill {% if task.status == 'running' %}running{% endif %}" style="width: {{ task.progress }}%"></div>
+                            <div class="progress-fill {% if task.status == 'running' %}running{% endif %}" data-progress="{{ task.progress | default(0) }}"></div>
                         </div>
                         <div class="progress-text">
                             <small>{{ task.progress }}% 完成</small>
@@ -1105,17 +1111,173 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/training.js') }}"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/jslib/chart.js') }}"></script>
 <script>
-    // 传递项目名称到JavaScript
-    window.projectName = '{{ project_name }}';
+    // 从模板数据元素获取配置信息
+    const templateData = document.querySelector('#template-data');
+    window.projectName = templateData ? templateData.dataset.projectName : '';
+    window.isAuthenticated = templateData ? templateData.dataset.isAuthenticated === 'true' : false;
     
     // 页面加载完成后初始化
     document.addEventListener('DOMContentLoaded', function() {
+        // 设置进度条宽度
+        const progressBars = document.querySelectorAll('.progress-fill[data-progress]');
+        progressBars.forEach(bar => {
+            const progress = bar.getAttribute('data-progress');
+            bar.style.width = progress + '%';
+        });
+        
+        // 检查用户认证状态
+        if (!window.isAuthenticated) {
+            showAuthenticationWarning();
+        }
+        
         // 定期更新任务状态
-        if (typeof updateTaskStatuses === 'function') {
+        if (typeof updateTaskStatuses === 'function' && window.isAuthenticated) {
             setInterval(updateTaskStatuses, 5000);
         }
     });
+    
+    // 显示认证警告
+    function showAuthenticationWarning() {
+        const warningHtml = `
+            <div class="auth-warning" id="auth-warning">
+                <div class="warning-content">
+                    <div class="warning-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="warning-text">
+                        <h4>🔐 需要登录访问</h4>
+                        <p>训练模块需要登录后才能使用。请先登录您的账户以访问所有功能。</p>
+                    </div>
+                    <div class="warning-actions">
+                        <button class="btn btn-primary" onclick="window.location.href='/login'">
+                            <i class="fas fa-sign-in-alt"></i> 立即登录
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeAuthWarning()">
+                            <i class="fas fa-times"></i> 关闭
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const warningElement = document.createElement('div');
+        warningElement.innerHTML = warningHtml;
+        document.body.appendChild(warningElement);
+        
+        // 添加警告样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .auth-warning {
+                position: fixed;
+                top: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                border: 2px solid #856404;
+                border-radius: 12px;
+                padding: 20px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+                z-index: 9999;
+                max-width: 500px;
+                width: 90%;
+                animation: slideDown 0.5s ease;
+            }
+            
+            .warning-content {
+                display: grid;
+                grid-template-columns: auto 1fr auto;
+                gap: 16px;
+                align-items: center;
+            }
+            
+            .warning-icon {
+                font-size: 24px;
+                color: #856404;
+            }
+            
+            .warning-text h4 {
+                margin: 0 0 8px 0;
+                color: #856404;
+                font-size: 16px;
+            }
+            
+            .warning-text p {
+                margin: 0;
+                color: #664d03;
+                font-size: 14px;
+                line-height: 1.4;
+            }
+            
+            .warning-actions {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .warning-actions .btn {
+                padding: 8px 16px;
+                border: none;
+                border-radius: 6px;
+                font-size: 12px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                white-space: nowrap;
+            }
+            
+            .warning-actions .btn-primary {
+                background: #007bff;
+                color: white;
+            }
+            
+            .warning-actions .btn-primary:hover {
+                background: #0056b3;
+                transform: translateY(-1px);
+            }
+            
+            .warning-actions .btn-secondary {
+                background: #6c757d;
+                color: white;
+            }
+            
+            .warning-actions .btn-secondary:hover {
+                background: #5a6268;
+            }
+            
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(-20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+            }
+            
+            @media (max-width: 600px) {
+                .warning-content {
+                    grid-template-columns: 1fr;
+                    text-align: center;
+                }
+                
+                .warning-actions {
+                    justify-self: center;
+                }
+            }
+        `;
+        
+        document.head.appendChild(style);
+    }
+    
+    // 关闭认证警告
+    function closeAuthWarning() {
+        const warning = document.getElementById('auth-warning');
+        if (warning) {
+            warning.style.animation = 'slideUp 0.3s ease';
+            setTimeout(() => warning.remove(), 300);
+        }
+    }
 </script>
 {% endblock %}

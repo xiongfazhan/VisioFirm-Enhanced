@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, send_file, current_app
+from flask import Blueprint, request, jsonify, render_template, send_file
 from flask_login import login_required, current_user
 import os
 import json
@@ -13,7 +14,8 @@ import zipfile
 from io import BytesIO
 
 bp = Blueprint('training', __name__, url_prefix='/training')
-logging.basicConfig(level=logging.INFO)
+# 优化日志级别，减少输出
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # 全局训练引擎实例存储
