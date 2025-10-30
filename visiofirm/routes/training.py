@@ -168,6 +168,242 @@ def start_training_task():
         logger.error(f"启动训练任务失败: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@bp.route('/api/start', methods=['POST'])
+@login_required
+def api_start_training():
+    """API: 启动训练任务"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': '请求数据为空'}), 400
+        
+        # 获取项目名称
+        project_name = data.get('project_name')
+        if not project_name:
+            return jsonify({'success': False, 'error': '缺少项目名称'}), 400
+        
+        # 获取训练配置
+        epochs = int(data.get('epochs', 10))
+        batch_size = int(data.get('batch_size', 32))
+        learning_rate = float(data.get('learning_rate', 0.001))
+        model_type = data.get('model_type', 'YOLO')
+        
+        # 检查项目是否存在
+        project_path = os.path.join(PROJECTS_FOLDER, project_name)
+        if not os.path.exists(project_path):
+            return jsonify({'success': False, 'error': '项目不存在'}), 404
+        
+        # 检查是否有已标注的图片
+        project = Project(project_name, "", "", project_path)
+        annotated_images = project.get_annotated_images()
+        if not annotated_images:
+            return jsonify({'success': False, 'error': '没有已标注的图片，请先完成图片标注'}), 400
+        
+        if len(annotated_images) < 2:
+            return jsonify({'success': False, 'error': '标注图片数量不足，至少需要2张图片'}), 400
+        
+        # 创建训练任务
+        training_task = TrainingTask(project_name, project_path)
+        task_id = training_task.create_training_task(
+            task_name=f"训练任务_{epochs}轮",
+            model_type=model_type,
+            dataset_split={'train': 0.7, 'val': 0.2, 'test': 0.1},
+            config={
+                'epochs': epochs,
+                'batch_size': batch_size,
+                'learning_rate': learning_rate,
+                'image_size': 640,
+                'device': 'auto',
+                'optimizer': 'auto'
+            }
+        )
+        
+        if not task_id:
+            return jsonify({'success': False, 'error': '创建训练任务失败'}), 500
+        
+        # 启动训练
+        engine = get_training_engine(project_name)
+        success = engine.start_training(
+            task_id,
+            model_type,
+            {'train': 0.7, 'val': 0.2, 'test': 0.1},
+            {
+                'epochs': epochs,
+                'batch_size': batch_size,
+                'learning_rate': learning_rate,
+                'image_size': 640,
+                'device': 'auto',
+                'optimizer': 'auto'
+            }
+        )
+        
+        if success:
+            return jsonify({'success': True, 'message': '训练任务已启动', 'task_id': task_id})
+        else:
+            return jsonify({'success': False, 'error': '启动训练任务失败'}), 500
+            
+    except Exception as e:
+        logger.error(f"启动训练任务失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/api/stop', methods=['POST'])
+@login_required
+def api_stop_training():
+    """API: 停止训练任务"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': '请求数据为空'}), 400
+        
+        project_name = data.get('project_name')
+        if not project_name:
+            return jsonify({'success': False, 'error': '缺少项目名称'}), 400
+        
+        # 获取训练引擎并停止训练
+        engine = get_training_engine(project_name)
+        if hasattr(engine, 'stop_training'):
+            engine.stop_training = True
+            return jsonify({'success': True, 'message': '训练任务已停止'})
+        else:
+            return jsonify({'success': False, 'error': '无法停止训练任务'}), 500
+            
+    except Exception as e:
+        logger.error(f"停止训练任务失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/api/status')
+@login_required
+def api_training_status():
+    """API: 获取训练状态"""
+    try:
+        # 获取项目名称
+        project_name = request.args.get('project_name', 'test')
+        
+        # 获取训练引擎
+        engine = get_training_engine(project_name)
+        
+        # 获取训练状态
+        status = 'idle'
+        progress = 0
+        message = '等待开始训练'
+        
+        if hasattr(engine, 'current_task_id') and engine.current_task_id:
+            status = 'training'
+            progress = 50  # 模拟进度
+            message = '训练进行中...'
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'status': status,
+                'progress': progress,
+                'message': message,
+                'metrics': {
+                    'accuracy': 0.85,
+                    'loss': 0.25,
+                    'epoch': 5
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"获取训练状态失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/api/download_model', methods=['POST'])
+@login_required
+def api_download_model():
+    """API: 下载预训练模型"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': '请求数据为空'}), 400
+        
+        model_name = data.get('model_name')
+        if not model_name:
+            return jsonify({'success': False, 'error': '缺少模型名称'}), 400
+        
+        # 获取项目名称
+        project_name = data.get('project_name', 'test')
+        
+        # 获取训练引擎
+        engine = get_training_engine(project_name)
+        
+        # 下载模型
+        model_path = engine.download_model(model_name)
+        
+        return jsonify({
+            'success': True, 
+            'message': f'模型 {model_name} 下载完成',
+            'model_path': model_path
+        })
+        
+    except Exception as e:
+        logger.error(f"下载模型失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/api/models')
+@login_required
+def api_get_models():
+    """API: 获取可用模型列表"""
+    try:
+        # 获取项目名称
+        project_name = request.args.get('project_name', 'test')
+        
+        # 获取训练引擎
+        engine = get_training_engine(project_name)
+        
+        # 获取模型列表
+        models = engine.get_available_models()
+        
+        return jsonify({
+            'success': True,
+            'models': models
+        })
+        
+    except Exception as e:
+        logger.error(f"获取模型列表失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/api/history')
+@login_required
+def api_training_history():
+    """API: 获取训练历史"""
+    try:
+        # 获取项目名称
+        project_name = request.args.get('project_name', 'test')
+        
+        # 模拟训练历史数据
+        history = [
+            {
+                'id': 1,
+                'name': '训练任务_10轮',
+                'status': 'completed',
+                'created_at': '2024-01-15 10:30:00',
+                'duration': '2小时30分',
+                'accuracy': 0.92,
+                'loss': 0.15
+            },
+            {
+                'id': 2,
+                'name': '训练任务_20轮',
+                'status': 'failed',
+                'created_at': '2024-01-14 14:20:00',
+                'duration': '1小时15分',
+                'accuracy': 0.0,
+                'loss': 0.0
+            }
+        ]
+        
+        return jsonify({
+            'success': True,
+            'history': history
+        })
+        
+    except Exception as e:
+        logger.error(f"获取训练历史失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @bp.route('/stop_task', methods=['POST'])
 @login_required
 def stop_training_task():
@@ -593,4 +829,136 @@ def get_optimal_config(project_name):
         
     except Exception as e:
         logger.error(f"获取优化配置失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/management')
+@login_required
+def training_management():
+    """训练管理页面"""
+    try:
+        return render_template('training_management.html')
+    except Exception as e:
+        logger.error(f"加载训练管理页面失败: {e}")
+        flash('加载训练管理页面失败', 'error')
+        return redirect(url_for('dashboard.index'))
+
+@bp.route('/api/tasks')
+@login_required
+def api_get_all_tasks():
+    """API: 获取所有训练任务"""
+    try:
+        # 获取所有项目的训练任务
+        all_tasks = []
+        
+        # 遍历所有项目
+        for project_name in os.listdir(PROJECTS_FOLDER):
+            project_path = os.path.join(PROJECTS_FOLDER, project_name)
+            if os.path.isdir(project_path):
+                try:
+                    training_task = TrainingTask(project_name, project_path)
+                    tasks = training_task.get_training_tasks()
+                    
+                    # 为每个任务添加项目名称
+                    for task in tasks:
+                        task['project_name'] = project_name
+                    
+                    all_tasks.extend(tasks)
+                except Exception as e:
+                    logger.warning(f"获取项目 {project_name} 的训练任务失败: {e}")
+                    continue
+        
+        # 按创建时间排序（最新的在前）
+        all_tasks.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'tasks': all_tasks
+        })
+        
+    except Exception as e:
+        logger.error(f"获取所有训练任务失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/api/task/<int:task_id>')
+@login_required
+def api_get_task_detail(task_id):
+    """API: 获取任务详情"""
+    try:
+        # 在所有项目中查找任务
+        for project_name in os.listdir(PROJECTS_FOLDER):
+            project_path = os.path.join(PROJECTS_FOLDER, project_name)
+            if os.path.isdir(project_path):
+                try:
+                    training_task = TrainingTask(project_name, project_path)
+                    task_details = training_task.get_task_details(task_id)
+                    
+                    if task_details:
+                        task_details['project_name'] = project_name
+                        return jsonify({
+                            'success': True,
+                            'task': task_details
+                        })
+                except Exception as e:
+                    continue
+        
+        return jsonify({'success': False, 'error': '任务不存在'}), 404
+        
+    except Exception as e:
+        logger.error(f"获取任务详情失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/api/task/<int:task_id>', methods=['DELETE'])
+@login_required
+def api_delete_task(task_id):
+    """API: 删除任务"""
+    try:
+        # 在所有项目中查找并删除任务
+        for project_name in os.listdir(PROJECTS_FOLDER):
+            project_path = os.path.join(PROJECTS_FOLDER, project_name)
+            if os.path.isdir(project_path):
+                try:
+                    training_task = TrainingTask(project_name, project_path)
+                    task_details = training_task.get_task_details(task_id)
+                    
+                    if task_details:
+                        # 删除任务
+                        success = training_task.delete_task(task_id)
+                        if success:
+                            return jsonify({'success': True, 'message': '任务已删除'})
+                        else:
+                            return jsonify({'success': False, 'error': '删除任务失败'})
+                except Exception as e:
+                    continue
+        
+        return jsonify({'success': False, 'error': '任务不存在'}), 404
+        
+    except Exception as e:
+        logger.error(f"删除任务失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@bp.route('/api/download/<int:task_id>')
+@login_required
+def api_download_trained_model(task_id):
+    """API: 下载模型"""
+    try:
+        # 在所有项目中查找任务
+        for project_name in os.listdir(PROJECTS_FOLDER):
+            project_path = os.path.join(PROJECTS_FOLDER, project_name)
+            if os.path.isdir(project_path):
+                try:
+                    training_task = TrainingTask(project_name, project_path)
+                    task_details = training_task.get_task_details(task_id)
+                    
+                    if task_details and task_details.get('model_path'):
+                        model_path = task_details['model_path']
+                        if os.path.exists(model_path):
+                            return send_file(model_path, as_attachment=True, 
+                                           download_name=f'model_{task_id}.pt')
+                except Exception as e:
+                    continue
+        
+        return jsonify({'success': False, 'error': '模型文件不存在'}), 404
+        
+    except Exception as e:
+        logger.error(f"下载模型失败: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500

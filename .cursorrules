@@ -1,0 +1,152 @@
+# VisioFirm-Enhanced 项目开发规则
+
+## 🎯 核心开发原则
+
+### 1. 前端代码标准化
+- **HTML、CSS、JavaScript必须分离到不同文件**
+- **禁止在HTML中内联CSS和JavaScript**
+- **每个文件职责单一，便于维护和复用**
+
+### 2. 前后端分离架构
+- **后端提供RESTful API接口**
+- **前端通过AJAX调用后端API**
+- **数据交互使用JSON格式**
+- **避免服务端渲染，采用客户端渲染**
+
+## 📁 文件结构规范
+
+### 前端文件组织
+```
+visiofirm/
+├── static/
+│   ├── css/           # 样式文件
+│   │   ├── style.css     # 全局样式
+│   │   ├── datasets.css  # 数据集页面样式
+│   │   └── projects.css  # 项目页面样式
+│   ├── js/            # JavaScript文件
+│   │   ├── common.js     # 通用功能
+│   │   ├── datasetManager.js  # 数据集管理
+│   │   ├── datasetDownloader.js # 下载功能
+│   │   └── datasets.js   # 数据集页面逻辑
+│   └── images/        # 图片资源
+└── templates/         # HTML模板
+    ├── index.html     # 主页面
+    ├── datasets.html  # 数据集页面
+    └── projects.html  # 项目页面
+```
+
+## 🔧 开发规范
+
+### HTML规范
+- 禁止内联`<style>`标签
+- 禁止内联`<script>`标签
+- 使用外部CSS和JS文件
+- 保持HTML结构清晰
+
+### CSS规范
+- 按功能模块分离CSS文件
+- 使用语义化的类名
+- 遵循BEM命名规范
+- 响应式设计优先
+
+### JavaScript规范
+- 使用ES6+语法
+- 模块化组织代码
+- 事件处理使用addEventListener
+- API调用使用async/await
+
+## 🌐 API设计规范
+
+### RESTful API设计
+- 使用标准HTTP方法
+- 返回JSON格式数据
+- 统一的错误处理
+- 版本控制API
+
+### 前端API调用
+- 使用fetch API
+- 完善的错误处理
+- 加载状态管理
+- 数据验证
+
+## 📋 代码审查清单
+
+### 前端代码审查
+- [ ] HTML中没有内联`<style>`标签
+- [ ] HTML中没有内联`<script>`标签
+- [ ] CSS文件按功能模块分离
+- [ ] JavaScript使用ES6+语法
+- [ ] 事件处理使用addEventListener
+- [ ] API调用使用async/await
+- [ ] 错误处理完善
+
+### 后端代码审查
+- [ ] API返回JSON格式
+- [ ] 使用RESTful设计原则
+- [ ] 错误处理统一返回格式
+- [ ] 避免在路由中直接渲染HTML
+- [ ] 数据验证在API层进行
+- [ ] 日志记录完善
+
+## 🚀 最佳实践
+
+### 1. 模块化开发
+- 按功能模块组织JavaScript
+- 每个文件职责单一
+- 避免全局变量污染
+- 使用命名空间
+
+### 2. 响应式设计
+- 移动端优先
+- 使用CSS Grid和Flexbox
+- 媒体查询合理使用
+- 图片优化
+
+### 3. 错误处理
+- 统一的错误处理机制
+- 用户友好的错误提示
+- 日志记录完善
+- 异常恢复机制
+
+## 📝 提交规范
+
+### Git提交信息格式
+```
+feat: 添加数据集下载功能
+fix: 修复菜单按钮无响应问题
+style: 重构CSS文件分离
+refactor: 重构JavaScript模块化
+docs: 更新开发规范文档
+```
+
+### 分支命名规范
+```
+feature/dataset-download    # 新功能
+bugfix/menu-button-fix     # 错误修复
+refactor/css-separation    # 重构
+hotfix/critical-bug       # 紧急修复
+```
+
+## 🔍 代码质量检查
+
+### 自动化检查
+- CSS格式检查
+- JavaScript语法检查
+- HTML结构检查
+- 性能优化检查
+
+### 手动检查清单
+- [ ] 代码格式统一
+- [ ] 变量命名规范
+- [ ] 函数职责单一
+- [ ] 注释完整清晰
+- [ ] 无重复代码
+- [ ] 性能优化合理
+
+---
+
+**重要提醒：**
+1. 所有新开发的页面和功能都必须遵循以上规范
+2. 现有代码在重构时也要逐步向规范靠拢
+3. 代码审查时必须检查是否违反规范
+4. 违反规范的代码不允许合并到主分支

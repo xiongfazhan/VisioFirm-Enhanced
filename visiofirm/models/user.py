@@ -23,6 +23,20 @@ def init_db():
             )
         ''')
         conn.commit()
+        
+        # 检查是否存在默认管理员账户，如果不存在则创建
+        cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', ('admin',))
+        admin_exists = cursor.fetchone()[0] > 0
+        
+        if not admin_exists:
+            # 创建默认管理员账户
+            admin_password_hash = generate_password_hash('admin')
+            cursor.execute('''
+                INSERT INTO users (username, password_hash, first_name, last_name, email, company)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', ('admin', admin_password_hash, 'Admin', 'User', 'admin@visiofirm.com', 'VisioFirm'))
+            conn.commit()
+            print("✅ 默认管理员账户已创建: admin/admin")
 
 def create_user(first_name, last_name, username, email, password, company):
     db_path = get_db_path()

@@ -20,6 +20,7 @@ import errno
 from visiofirm.config import PROJECTS_FOLDER, VALID_IMAGE_EXTENSIONS, get_cache_folder
 from visiofirm.models.project import Project
 from visiofirm.utils import CocoAnnotationParser, YoloAnnotationParser, NameMatcher, is_valid_image
+from visiofirm.utils.api_helpers import APIResponse, APIError, handle_api_errors
 
 # Configure logging with less verbose output
 logging.basicConfig(level=logging.WARNING)
@@ -27,43 +28,96 @@ logger = logging.getLogger(__name__)
 
 bp = Blueprint('dashboard', __name__)
 
-@bp.route('/')
-@login_required
-def index():
+def get_projects_data():
+    """
+    获取所有项目的数据
+    
+    Returns:
+        list: 项目列表
+    """
     projects = []
     for project_name in os.listdir(PROJECTS_FOLDER):
         if project_name in ['temp_chunks', 'weights']:
             continue
         project_path = os.path.join(PROJECTS_FOLDER, project_name)
         if os.path.isdir(project_path):
-            db_path = os.path.join(project_path, 'config.db')
-            creation_date = None
-            if os.path.exists(db_path):
-                try:
-                    with sqlite3.connect(db_path) as conn:
-                        cursor = conn.cursor()
-                        cursor.execute('SELECT creation_date FROM Project_Configuration WHERE project_name = ?', (project_name,))
-                        result = cursor.fetchone()
-                        creation_date = result[0] if result else None
-                except Exception as e:
-                    logger.error(f"Error fetching creation date for {project_name}: {e}")
-            
-            images_path = os.path.join(project_path, 'images')
-            image_files = [
-                f for f in os.listdir(images_path)
-                if os.path.isfile(os.path.join(images_path, f)) and os.path.splitext(f)[1].lower() in VALID_IMAGE_EXTENSIONS
-            ] if os.path.exists(images_path) else []
-            projects.append({
-                'name': project_name,
-                'images': [
-                    os.path.join('/projects', project_name, 'images', img)
-                    for img in image_files[:3]
-                ],
-                'creation_date': creation_date
-            })
+            try:
+                project = Project(project_name, '', '', project_path)
+                db_path = os.path.join(project_path, 'config.db')
+                creation_date = None
+                annotation_type = 'unknown'
+                description = ''
+                
+                if os.path.exists(db_path):
+                    try:
+                        with sqlite3.connect(db_path) as conn:
+                            cursor = conn.cursor()
+                            cursor.execute('SELECT creation_date, annotation_type, description FROM Project_Configuration WHERE project_name = ?', (project_name,))
+                            result = cursor.fetchone()
+                            if result:
+                                creation_date = result[0]
+                                annotation_type = result[1] or 'bounding_box'
+                                description = result[2] or ''
+                    except Exception as e:
+                        logger.error(f"Error fetching project config for {project_name}: {e}")
+                
+                # 获取项目统计信息
+                image_count = project.get_image_count()
+                annotated_count = project.get_annotated_image_count()
+                class_count = len(project.get_classes())
+                
+                projects.append({
+                    'name': project_name,
+                    'description': description,
+                    'annotation_type': annotation_type,
+                    'created_at': creation_date,
+                    'image_count': image_count,
+                    'annotation_count': annotated_count,
+                    'class_count': class_count
+                })
+            except Exception as e:
+                logger.error(f"Error processing project {project_name}: {e}")
+                continue
     
-    projects.sort(key=lambda p: p['creation_date'] or '', reverse=True)
-    return render_template('index.html', projects=projects)
+    projects.sort(key=lambda p: p['created_at'] or '', reverse=True)
+    return projects
+
+@bp.route('/')
+@login_required
+def index():
+    """仪表板主页面"""
+    return render_template('index.html')
+
+@bp.route('/api/projects', methods=['GET'])
+@login_required
+@handle_api_errors
+def get_projects():
+    """
+    获取项目列表API
+    
+    Returns:
+        200: 成功返回项目列表
+        500: 服务器错误
+        
+    Response Data:
+        {
+            "success": true,
+            "message": "获取项目列表成功",
+            "data": [
+                {
+                    "name": "project1",
+                    "description": "项目描述",
+                    "annotation_type": "bounding_box",
+                    "created_at": "2025-10-13",
+                    "image_count": 100,
+                    "annotation_count": 75,
+                    "class_count": 10
+                }
+            ]
+        }
+    """
+    projects = get_projects_data()
+    return APIResponse.success(data=projects, message="获取项目列表成功")
 
 def extract_archive(file_path, extract_path):
     """Extract archive files (zip, tar, rar) to the specified path and validate images."""
@@ -556,19 +610,49 @@ def check_upload_status():
     logger.info(f"Checked upload status for upload_id={upload_id}, file_id={file_id}: {uploaded_chunks} chunks uploaded")
     return jsonify({'uploaded_chunks': uploaded_chunks})
 
-@bp.route('/delete_project/<project_name>', methods=['POST'])
+@bp.route('/delete_project/<project_name>', methods=['POST', 'DELETE'])
 @login_required
+@handle_api_errors
 def delete_project(project_name):
+    """
+    删除项目API
+    
+    Args:
+        project_name: 项目名称
+        
+    Returns:
+        200: 删除成功
+        404: 项目不存在
+        500: 删除失败
+        
+    Example:
+        POST /delete_project/my_project
+        Response: {
+            "success": true,
+            "message": "项目删除成功"
+        }
+    """
     project_path = os.path.join(PROJECTS_FOLDER, secure_filename(project_name))
-    if os.path.exists(project_path):
-        try:
-            shutil.rmtree(project_path)
-            logger.info(f"Deleted project {project_name}")
-            return jsonify({'success': True})
-        except Exception as e:
-            logger.error(f"Error deleting project {project_name}: {e}")
-            return jsonify({'error': f'Deletion failed: {str(e)}'}), 500
-    return jsonify({'error': 'Project not found'}), 404
+    
+    if not os.path.exists(project_path):
+        raise APIError("项目不存在", code=404, error_type="NotFound")
+    
+    try:
+        shutil.rmtree(project_path)
+        logger.info(f"Successfully deleted project: {project_name}")
+        return APIResponse.success(message="项目删除成功")
+    except PermissionError:
+        raise APIError(
+            "无法删除项目，权限不足",
+            code=403,
+            error_type="PermissionDenied"
+        )
+    except OSError as e:
+        raise APIError(
+            f"删除项目失败: {str(e)}",
+            code=500,
+            error_type="FileSystemError"
+        )
 
 @bp.route('/cleanup_chunks', methods=['POST'])
 @login_required
@@ -611,27 +695,50 @@ def cleanup_temp():
 
 @bp.route('/get_project_overview/<project_name>', methods=['GET'])
 @login_required
+@handle_api_errors
 def get_project_overview(project_name):
-    project_path = os.path.join(PROJECTS_FOLDER, secure_filename(project_name))
-    if not os.path.exists(project_path):
-        return jsonify({'error': 'Project not found'}), 404
-
-    try:
-        project = Project(project_name, '', '', project_path)
-        total_images = project.get_image_count()
-        annotated_images = project.get_annotated_image_count()
-        class_distribution = project.get_class_distribution()
-        annotations_per_image = project.get_annotations_per_image()
-        non_annotated_images = total_images - annotated_images
-
-        data = {
-            'total_images': total_images,
-            'annotated_images': annotated_images,
-            'non_annotated_images': non_annotated_images,
-            'class_distribution': class_distribution,
-            'annotations_per_image': annotations_per_image
+    """
+    获取项目概览API
+    
+    Args:
+        project_name: 项目名称
+        
+    Returns:
+        200: 成功返回项目概览数据
+        404: 项目不存在
+        500: 服务器错误
+        
+    Response Data:
+        {
+            "success": true,
+            "message": "获取项目概览成功",
+            "data": {
+                "total_images": 100,
+                "annotated_images": 75,
+                "non_annotated_images": 25,
+                "class_distribution": {...},
+                "annotations_per_image": {...}
+            }
         }
-        return jsonify(data)
-    except Exception as e:
-        logger.error(f"Error fetching overview for {project_name}: {e}")
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
+    """
+    project_path = os.path.join(PROJECTS_FOLDER, secure_filename(project_name))
+    
+    if not os.path.exists(project_path):
+        raise APIError("项目不存在", code=404, error_type="NotFound")
+
+    project = Project(project_name, '', '', project_path)
+    total_images = project.get_image_count()
+    annotated_images = project.get_annotated_image_count()
+    class_distribution = project.get_class_distribution()
+    annotations_per_image = project.get_annotations_per_image()
+    non_annotated_images = total_images - annotated_images
+
+    data = {
+        'total_images': total_images,
+        'annotated_images': annotated_images,
+        'non_annotated_images': non_annotated_images,
+        'class_distribution': class_distribution,
+        'annotations_per_image': annotations_per_image
+    }
+    
+    return APIResponse.success(data=data, message="获取项目概览成功")

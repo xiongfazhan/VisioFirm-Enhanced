@@ -8,15 +8,23 @@ bp = Blueprint('auth', __name__)
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        print(f"🔐 收到登录请求: {request.form}")
         identifier = request.form['identifier']
         password = request.form['password']
+        print(f"🔐 登录信息: identifier={identifier}, password={'*' * len(password)}")
+        
         user_data = get_user_by_username(identifier) or get_user_by_email(identifier)
+        print(f"🔐 用户数据: {user_data}")
+        
         if user_data and check_password_hash(user_data[2], password):
+            print(f"🔐 密码验证成功，用户ID: {user_data[0]}")
             user = User(user_data[0], user_data[1], user_data[3], user_data[4], user_data[5], user_data[6])
             login_user(user)
             flash('登录成功！', 'success')
+            print(f"🔐 登录成功，重定向到仪表板")
             return redirect(url_for('dashboard.index'))
         else:
+            print(f"🔐 登录失败: 用户名或密码错误")
             flash('用户名/邮箱或密码无效', 'error')
     return render_template('login.html')
 
