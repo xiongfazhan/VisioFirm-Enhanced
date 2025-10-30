@@ -17,6 +17,15 @@ import shutil
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
+# 设置ultralytics日志级别，减少冗余输出
+import logging
+ultralytics_logger = logging.getLogger('ultralytics')
+ultralytics_logger.setLevel(logging.ERROR)
+
+# 设置torch日志级别
+torch_logger = logging.getLogger('torch')
+torch_logger.setLevel(logging.ERROR)
+
 class TrainingEngine:
     def __init__(self, project_name, project_path):
         self.project_name = project_name
@@ -293,9 +302,10 @@ class TrainingEngine:
             dataset_dir = self.prepare_dataset(dataset_split)
             dataset_yaml = os.path.join(dataset_dir, 'dataset.yaml')
             
-            # 创建模型
+            # 确保模型可用
             if model_type.startswith('yolo'):
-                model = YOLO(f"{model_type}.pt")
+                model_path = self.ensure_model_available(model_type)
+                model = YOLO(model_path)
             else:
                 raise ValueError(f"不支持的模型类型: {model_type}")
             
@@ -349,9 +359,13 @@ class TrainingEngine:
                         # 记录训练进度到数据库
                         if loss is not None:
                             self.training_task.log_training_progress(task_id, epoch, loss)
-                            logger.info(f"Epoch {epoch}/{total_epochs}, Loss: {loss:.4f}, Progress: {progress}%")
+                            # 只在每5个epoch或最后一个epoch时输出日志
+                            if epoch % 5 == 0 or epoch == total_epochs:
+                                logger.info(f"📈 Epoch {epoch}/{total_epochs} | Loss: {loss:.4f} | Progress: {progress}%")
                         else:
-                            logger.info(f"Epoch {epoch}/{total_epochs}, Progress: {progress}%")
+                            # 只在每5个epoch或最后一个epoch时输出日志
+                            if epoch % 5 == 0 or epoch == total_epochs:
+                                logger.info(f"📈 Epoch {epoch}/{total_epochs} | Progress: {progress}%")
                             
                     except Exception as log_error:
                         logger.warning(f"记录训练日志时出错: {log_error}")
@@ -362,17 +376,29 @@ class TrainingEngine:
             def on_train_end(trainer):
                 try:
                     # 训练结束时的处理
-                    logger.info(f"Training completed for task {task_id}")
+                    logger.info(f"✅ 训练任务 {task_id} 完成")
                 except Exception as e:
-                    logger.error(f"训练结束回调出错: {e}")
+                    logger.error(f"❌ 训练结束回调出错: {e}")
             
             # 添加回调
             model.add_callback('on_train_epoch_end', on_train_epoch_end)
             model.add_callback('on_train_end', on_train_end)
             
             # 开始训练
-            logger.info(f"开始训练模型: {model_type}, 参数: {train_args}")
-            results = model.train(**train_args)
+            logger.info(f"🚀 开始训练任务 {task_id}")
+            logger.info(f"📊 模型: {model_type} | 设备: {optimal_device} | 轮数: {config.get('epochs', 100)}")
+            
+            # 临时重定向stdout来减少训练过程中的冗余输出
+            import sys
+            from io import StringIO
+            old_stdout = sys.stdout
+            sys.stdout = StringIO()
+            
+            try:
+                results = model.train(**train_args)
+            finally:
+                # 恢复stdout
+                sys.stdout = old_stdout
             
             if not self.stop_training:
                 # 训练完成，保存模型路径和指标
@@ -385,9 +411,9 @@ class TrainingEngine:
                     last_model_path = os.path.join(weights_dir, 'last.pt')
                     if os.path.exists(last_model_path):
                         best_model_path = last_model_path
-                        logger.warning(f"best.pt 不存在，使用 last.pt: {best_model_path}")
+                        logger.warning(f"⚠️ best.pt 不存在，使用 last.pt: {best_model_path}")
                     else:
-                        logger.error(f"训练完成但没有找到模型文件: {weights_dir}")
+                        logger.error(f"❌ 训练完成但没有找到模型文件: {weights_dir}")
                         self.training_task.update_task_status(task_id, 'failed', None, "训练完成但模型文件丢失")
                         return
                 
@@ -412,7 +438,7 @@ class TrainingEngine:
                             metrics['recall'] = float(results.box.mr)
                             
                 except Exception as metrics_error:
-                    logger.warning(f"提取训练指标时出错: {metrics_error}")
+                    logger.warning(f"⚠️ 提取训练指标时出错: {metrics_error}")
                     metrics = {'note': '训练完成但指标提取失败'}
                 
                 self.training_task.update_task_status(
@@ -421,13 +447,13 @@ class TrainingEngine:
                     metrics=metrics
                 )
                 
-                logger.info(f"训练任务 {task_id} 完成，模型保存在: {best_model_path}")
+                logger.info(f"🎯 训练任务 {task_id} 完成，模型保存在: {best_model_path}")
             else:
                 self.training_task.update_task_status(task_id, 'stopped', None, "训练被用户停止")
-                logger.info(f"训练任务 {task_id} 被停止")
+                logger.info(f"⏹️ 训练任务 {task_id} 被停止")
                 
         except Exception as e:
-            logger.error(f"训练过程出错: {e}")
+            logger.error(f"❌ 训练过程出错: {e}")
             self.training_task.update_task_status(task_id, 'failed', None, str(e))
         finally:
             # 确保任务在结束时被注销
@@ -506,18 +532,121 @@ class TrainingEngine:
 
     def get_available_models(self):
         """获取可用的模型列表"""
-        return [
-            {'name': 'yolov8n', 'description': 'YOLOv8 Nano - 最快，精度较低'},
-            {'name': 'yolov8s', 'description': 'YOLOv8 Small - 平衡速度和精度'},
-            {'name': 'yolov8m', 'description': 'YOLOv8 Medium - 较高精度'},
-            {'name': 'yolov8l', 'description': 'YOLOv8 Large - 高精度'},
-            {'name': 'yolov8x', 'description': 'YOLOv8 Extra Large - 最高精度'},
-            {'name': 'yolov10n', 'description': 'YOLOv10 Nano - 最新版本，最快'},
-            {'name': 'yolov10s', 'description': 'YOLOv10 Small - 最新版本，平衡'},
-            {'name': 'yolov10m', 'description': 'YOLOv10 Medium - 最新版本，较高精度'},
-            {'name': 'yolov10l', 'description': 'YOLOv10 Large - 最新版本，高精度'},
-            {'name': 'yolov10x', 'description': 'YOLOv10 Extra Large - 最新版本，最高精度'},
+        models = [
+            {'name': 'yolov8n', 'description': 'YOLOv8 Nano - 最快，精度较低', 'size': '6MB'},
+            {'name': 'yolov8s', 'description': 'YOLOv8 Small - 平衡速度和精度', 'size': '22MB'},
+            {'name': 'yolov8m', 'description': 'YOLOv8 Medium - 较高精度', 'size': '50MB'},
+            {'name': 'yolov8l', 'description': 'YOLOv8 Large - 高精度', 'size': '87MB'},
+            {'name': 'yolov8x', 'description': 'YOLOv8 Extra Large - 最高精度', 'size': '136MB'},
+            {'name': 'yolov10n', 'description': 'YOLOv10 Nano - 最新版本，最快', 'size': '5MB'},
+            {'name': 'yolov10s', 'description': 'YOLOv10 Small - 最新版本，平衡', 'size': '20MB'},
+            {'name': 'yolov10m', 'description': 'YOLOv10 Medium - 最新版本，较高精度', 'size': '45MB'},
+            {'name': 'yolov10l', 'description': 'YOLOv10 Large - 最新版本，高精度', 'size': '80MB'},
+            {'name': 'yolov10x', 'description': 'YOLOv10 Extra Large - 最新版本，最高精度', 'size': '125MB'}
         ]
+        
+        # 检查模型是否已下载
+        for model in models:
+            model_path = self._get_model_path(model['name'])
+            model['downloaded'] = os.path.exists(model_path)
+            model['path'] = model_path
+        
+        return models
+
+    def _get_model_path(self, model_name):
+        """获取模型文件路径"""
+        from visiofirm.config import WEIGHTS_FOLDER
+        return os.path.join(WEIGHTS_FOLDER, f"{model_name}.pt")
+
+    def download_model(self, model_name, progress_callback=None):
+        """下载指定的预训练模型"""
+        try:
+            model_path = self._get_model_path(model_name)
+            
+            # 如果模型已存在，直接返回
+            if os.path.exists(model_path):
+                logger.info(f"模型 {model_name} 已存在: {model_path}")
+                return model_path
+            
+            # 确保权重目录存在
+            os.makedirs(os.path.dirname(model_path), exist_ok=True)
+            
+            logger.info(f"开始下载模型: {model_name}")
+            
+            # 使用YOLO自动下载功能，但禁用进度条
+            import os
+            import sys
+            from io import StringIO
+            
+            # 临时重定向stdout来隐藏YOLO的下载进度
+            old_stdout = sys.stdout
+            sys.stdout = StringIO()
+            
+            try:
+                model = YOLO(f"{model_name}.pt")
+                
+                # 将下载的模型移动到指定位置
+                if hasattr(model, 'ckpt_path') and os.path.exists(model.ckpt_path):
+                    shutil.move(model.ckpt_path, model_path)
+                    logger.info(f"模型 {model_name} 下载完成: {model_path}")
+                else:
+                    # 如果YOLO没有自动下载，手动下载
+                    import requests
+                    
+                    # YOLO官方模型下载URL
+                    model_urls = {
+                        'yolov8n': 'https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt',
+                        'yolov8s': 'https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8s.pt',
+                        'yolov8m': 'https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8m.pt',
+                        'yolov8l': 'https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8l.pt',
+                        'yolov8x': 'https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8x.pt',
+                        'yolov10n': 'https://github.com/ultralytics/assets/releases/download/v0.1.0/yolo10n.pt',
+                        'yolov10s': 'https://github.com/ultralytics/assets/releases/download/v0.1.0/yolo10s.pt',
+                        'yolov10m': 'https://github.com/ultralytics/assets/releases/download/v0.1.0/yolo10m.pt',
+                        'yolov10l': 'https://github.com/ultralytics/assets/releases/download/v0.1.0/yolo10l.pt',
+                        'yolov10x': 'https://github.com/ultralytics/assets/releases/download/v0.1.0/yolo10x.pt'
+                    }
+                    
+                    if model_name in model_urls:
+                        url = model_urls[model_name]
+                        logger.info(f"开始下载模型 {model_name}...")
+                        response = requests.get(url, stream=True)
+                        response.raise_for_status()
+                        
+                        total_size = int(response.headers.get('content-length', 0))
+                        downloaded = 0
+                        
+                        with open(model_path, 'wb') as f:
+                            for chunk in response.iter_content(chunk_size=8192):
+                                if chunk:
+                                    f.write(chunk)
+                                    downloaded += len(chunk)
+                                    if progress_callback:
+                                        progress_callback(downloaded, total_size)
+                        
+                        logger.info(f"模型 {model_name} 下载完成 ({downloaded/1024/1024:.1f}MB)")
+                    else:
+                        raise ValueError(f"不支持的模型: {model_name}")
+            finally:
+                # 恢复stdout
+                sys.stdout = old_stdout
+            
+            logger.info(f"模型下载完成: {model_path}")
+            return model_path
+            
+        except Exception as e:
+            logger.error(f"下载模型失败: {e}")
+            raise
+
+    def ensure_model_available(self, model_name):
+        """确保模型可用，如果不存在则自动下载"""
+        model_path = self._get_model_path(model_name)
+        
+        if not os.path.exists(model_path):
+            logger.info(f"模型 {model_name} 不存在，开始自动下载...")
+            return self.download_model(model_name)
+        
+        return model_path
 
     def get_device_info(self):
         """获取可用的计算设备信息"""

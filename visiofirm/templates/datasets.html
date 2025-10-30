@@ -1,425 +1,20 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>数据集管理 - VisioFirm</title>
-    <link rel="shortcut icon" href="{{ url_for('static', filename='icons/favicon.ico') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        .dataset-container {
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .dataset-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #e1e1e1;
-        }
-        
-        .dataset-title {
-            font-size: 28px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin: 0;
-        }
-        
-        .dataset-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s ease;
-        }
-        
-        .btn-primary {
-            background: #3498db;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #2980b9;
-        }
-        
-        .btn-secondary {
-            background: #95a5a6;
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: #7f8c8d;
-        }
-        
-        .dataset-controls {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        .search-box {
-            flex: 1;
-            min-width: 300px;
-            position: relative;
-        }
-        
-        .search-input {
-            width: 100%;
-            padding: 12px 40px 12px 16px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        
-        .search-btn {
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: #666;
-            cursor: pointer;
-        }
-        
-        .filter-select {
-            padding: 12px 16px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            background: white;
-        }
-        
-        .dataset-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .dataset-card {
-            background: white;
-            border: 1px solid #e1e1e1;
-            border-radius: 8px;
-            padding: 20px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
-        
-        .dataset-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            transform: translateY(-2px);
-        }
-        
-        .dataset-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 12px;
-        }
-        
-        .dataset-name {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin: 0;
-        }
-        
-        .dataset-type {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        
-        .type-custom {
-            background: #e8f5e8;
-            color: #27ae60;
-        }
-        
-        .type-downloaded {
-            background: #e3f2fd;
-            color: #2196f3;
-        }
-        
-        .type-imported {
-            background: #fff3e0;
-            color: #ff9800;
-        }
-        
-        .dataset-description {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 15px;
-            line-height: 1.4;
-        }
-        
-        .dataset-stats {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }
-        
-        .stat-item {
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            color: #666;
-            margin-top: 2px;
-        }
-        
-        .dataset-preview {
-            margin-bottom: 15px;
-        }
-        
-        .preview-images {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 8px;
-        }
-        
-        .preview-img {
-            width: 40px;
-            height: 40px;
-            border-radius: 4px;
-            object-fit: cover;
-            border: 1px solid #ddd;
-        }
-        
-        .dataset-actions-card {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-        
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-top: 30px;
-        }
-        
-        .pagination button {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            background: white;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        
-        .pagination button:hover:not(:disabled) {
-            background: #f5f5f5;
-        }
-        
-        .pagination button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .pagination .current-page {
-            background: #3498db;
-            color: white;
-            border-color: #3498db;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #666;
-        }
-        
-        .empty-state h3 {
-            margin-bottom: 10px;
-            color: #999;
-        }
-        
-        /* Modal styles */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-        }
-        
-        .modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal-content {
-            background: white;
-            border-radius: 8px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
-        .modal-header {
-            padding: 20px;
-            border-bottom: 1px solid #e1e1e1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .modal-title {
-            font-size: 20px;
-            font-weight: 600;
-            margin: 0;
-        }
-        
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #666;
-        }
-        
-        .modal-body {
-            padding: 20px;
-        }
-        
-        .modal-footer {
-            padding: 20px;
-            border-top: 1px solid #e1e1e1;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        
-        /* Download modal styles */
-        .download-form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .form-label {
-            font-weight: 500;
-            margin-bottom: 5px;
-            color: #333;
-        }
-        
-        .form-input {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .form-textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-        
-        .progress-container {
-            margin-top: 20px;
-            display: none;
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: #3498db;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        
-        .progress-text {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #666;
-            text-align: center;
-        }
-        
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-        
-        .status-ready {
-            background: #e8f5e8;
-            color: #27ae60;
-        }
-        
-        .status-downloading {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .status-error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-    </style>
-</head>
-<body>
+{% extends "labeler_base.html" %}
+{% block title %}数据集管理{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/datasets.css') }}">
+{% endblock %}
+
+{% block content %}
     <div class="dataset-container">
         <!-- Header -->
         <div class="dataset-header">
             <h1 class="dataset-title">数据集管理</h1>
             <div class="dataset-actions">
-                <button class="btn btn-secondary" onclick="showDownloadModal()">
+                <button class="btn btn-secondary">
                     <span>📥</span> 下载数据集
                 </button>
-                <button class="btn btn-primary" onclick="createDataset()">
+                <button class="btn btn-primary">
                     <span>➕</span> 创建数据集
                 </button>
             </div>
@@ -429,11 +24,10 @@
         <div class="dataset-controls">
             <div class="search-box">
                 <input type="text" class="search-input" id="searchInput" 
-                       placeholder="搜索数据集名称或描述..." 
-                       onkeypress="handleSearchKeypress(event)">
-                <button class="search-btn" onclick="searchDatasets()">🔍</button>
+                       placeholder="搜索数据集名称或描述...">
+                <button class="search-btn">🔍</button>
             </div>
-            <select class="filter-select" id="typeFilter" onchange="filterDatasets()">
+            <select class="filter-select" id="typeFilter">
                 <option value="">所有类型</option>
                 <option value="custom">自定义</option>
                 <option value="downloaded">下载</option>
@@ -454,17 +48,27 @@
     
     <!-- Download Modal -->
     <div id="downloadModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content large-modal">
             <div class="modal-header">
                 <h2 class="modal-title">下载开源数据集</h2>
-                <button class="modal-close" onclick="hideDownloadModal()">&times;</button>
+                <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
+                <!-- 下载方式选择 -->
+                <div class="download-tabs">
+                    <button class="tab-btn active">手动输入</button>
+                    <button class="tab-btn">搜索数据集</button>
+                    <button class="tab-btn">热门数据集</button>
+                </div>
+                
+                <!-- 手动输入方式 -->
+                <div id="manualTab" class="download-tab-content active">
                 <form class="download-form" onsubmit="startDownload(event)">
                     <div class="form-group">
                         <label class="form-label">数据集URL *</label>
                         <input type="url" class="form-input" id="downloadUrl" 
                                placeholder="https://example.com/dataset.zip" required>
+                            <small class="form-hint">支持 .zip, .tar, .tar.gz, .rar 格式</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">数据集名称 *</label>
@@ -476,18 +80,73 @@
                         <textarea class="form-input form-textarea" id="downloadDescription" 
                                   placeholder="数据集描述（可选）"></textarea>
                     </div>
-                    <div class="progress-container" id="progressContainer">
+                    </form>
+                </div>
+                
+                <!-- 搜索方式 -->
+                <div id="searchTab" class="download-tab-content">
+                    <div class="search-section">
+                        <div class="search-box">
+                            <input type="text" class="search-input" id="datasetSearch" 
+                                   placeholder="搜索数据集名称或关键词...">
+                            <button class="search-btn">🔍</button>
+                        </div>
+                        <select class="filter-select" id="sourceFilter">
+                            <option value="all">所有来源</option>
+                            <option value="kaggle">Kaggle</option>
+                            <option value="github">GitHub</option>
+                            <option value="huggingface">HuggingFace</option>
+                        </select>
+                    </div>
+                    <div id="searchResults" class="search-results">
+                        <!-- 搜索结果将在这里显示 -->
+                    </div>
+                </div>
+                
+                <!-- 热门数据集 -->
+                <div id="popularTab" class="download-tab-content">
+                    <div class="popular-datasets">
+                        <div class="dataset-card">
+                            <h4>COCO数据集</h4>
+                            <p>Microsoft Common Objects in Context</p>
+                            <span class="dataset-size">~18GB</span>
+                        </div>
+                        <div class="dataset-card">
+                            <h4>ImageNet</h4>
+                            <p>大规模图像分类数据集</p>
+                            <span class="dataset-size">~150GB</span>
+                        </div>
+                        <div class="dataset-card">
+                            <h4>Pascal VOC</h4>
+                            <p>Pascal Visual Object Classes</p>
+                            <span class="dataset-size">~2GB</span>
+                        </div>
+                        <div class="dataset-card">
+                            <h4>Open Images</h4>
+                            <p>Google开源图像数据集</p>
+                            <span class="dataset-size">~500GB</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 下载进度 -->
+                <div class="progress-container" id="progressContainer" style="display: none;">
+                    <div class="progress-header">
+                        <span id="progressTitle">下载进度</span>
+                        <button class="cancel-btn" id="cancelBtn">取消下载</button>
+                    </div>
                         <div class="progress-bar">
                             <div class="progress-fill" id="progressFill"></div>
                         </div>
+                    <div class="progress-details">
                         <div class="progress-text" id="progressText">准备下载...</div>
+                        <div class="progress-stats" id="progressStats"></div>
                     </div>
-                </form>
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="hideDownloadModal()">取消</button>
-                <button type="submit" class="btn btn-primary" id="downloadBtn" 
-                        onclick="startDownload(event)">开始下载</button>
+                <button type="button" class="btn btn-secondary">取消</button>
+                <button type="button" class="btn btn-primary" id="downloadBtn">开始下载</button>
             </div>
         </div>
     </div>
@@ -497,28 +156,22 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title" id="detailTitle">数据集详情</h2>
-                <button class="modal-close" onclick="hideDetailModal()">&times;</button>
+                <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body" id="detailBody">
                 <!-- Detail content will be populated by JavaScript -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="hideDetailModal()">关闭</button>
-                <button type="button" class="btn btn-primary" id="linkProjectBtn" 
-                        onclick="linkToProject()">关联项目</button>
+                <button type="button" class="btn btn-secondary">关闭</button>
+                <button type="button" class="btn btn-primary" id="linkProjectBtn">关联项目</button>
             </div>
         </div>
     </div>
 
+{% endblock %}
+
+{% block scripts %}
     <script src="{{ url_for('static', filename='js/datasetManager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/datasetDownloader.js') }}"></script>
-    <script>
-        // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof initializeDatasetManager === 'function') {
-                initializeDatasetManager();
-            }
-        });
-    </script>
-</body>
-</html>
+<script src="{{ url_for('static', filename='js/datasets.js') }}"></script>
+{% endblock %}

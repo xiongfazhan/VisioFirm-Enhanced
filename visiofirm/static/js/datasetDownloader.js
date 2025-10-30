@@ -339,6 +339,9 @@ function showDownloadModal() {
         if (!datasetDownloader) {
             initializeDatasetDownloader();
         }
+        
+        // 重置到手动输入标签页
+        switchDownloadTab('manual');
     }
 }
 
@@ -411,6 +414,131 @@ function createDataset() {
 function linkToProject() {
     // 这个函数会在数据集详情模态框中使用
     alert('关联到项目功能将在项目创建流程中实现');
+}
+
+/**
+ * 切换下载标签页
+ */
+function switchDownloadTab(tabName) {
+    // 隐藏所有标签页内容
+    document.querySelectorAll('.download-tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // 移除所有标签按钮的active状态
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 显示选中的标签页
+    const targetTab = document.getElementById(tabName + 'Tab');
+    const targetBtn = document.querySelector(`[onclick="switchDownloadTab('${tabName}')"]`);
+    
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+    if (targetBtn) {
+        targetBtn.classList.add('active');
+    }
+}
+
+/**
+ * 搜索公开数据集
+ */
+async function searchPublicDatasets() {
+    const query = document.getElementById('datasetSearch')?.value?.trim();
+    const source = document.getElementById('sourceFilter')?.value || 'all';
+    
+    if (!query) {
+        alert('请输入搜索关键词');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/datasets/api/public/search?query=${encodeURIComponent(query)}&source=${source}&limit=10`);
+        const result = await response.json();
+        
+        if (result.success) {
+            displaySearchResults(result.data.results);
+        } else {
+            throw new Error(result.error || '搜索失败');
+        }
+    } catch (error) {
+        console.error('搜索失败:', error);
+        alert('搜索失败: ' + error.message);
+    }
+}
+
+/**
+ * 显示搜索结果
+ */
+function displaySearchResults(results) {
+    const container = document.getElementById('searchResults');
+    if (!container) return;
+    
+    if (results.length === 0) {
+        container.innerHTML = '<div class="no-results">未找到相关数据集</div>';
+        return;
+    }
+    
+    container.innerHTML = results.map(result => `
+        <div class="search-result-item" onclick="selectSearchResult('${result.url}', '${result.name}', '${result.description}')">
+            <div class="result-title">${result.name}</div>
+            <div class="result-description">${result.description}</div>
+            <div class="result-meta">
+                <span>来源: ${result.source}</span>
+                <span>大小: ${result.size}</span>
+                <span>格式: ${result.format}</span>
+                <span>下载量: ${result.downloads}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+/**
+ * 选择搜索结果
+ */
+function selectSearchResult(url, name, description) {
+    // 切换到手动输入标签页并填充数据
+    switchDownloadTab('manual');
+    
+    document.getElementById('downloadUrl').value = url;
+    document.getElementById('downloadName').value = name;
+    document.getElementById('downloadDescription').value = description;
+}
+
+/**
+ * 选择热门数据集
+ */
+function selectPopularDataset(datasetId, name, description) {
+    // 预设的热门数据集URL（实际项目中应该从配置或API获取）
+    const popularDatasets = {
+        'coco': 'https://images.cocodataset.org/zips/train2017.zip',
+        'imagenet': 'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar',
+        'voc': 'https://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar',
+        'openimages': 'https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-labels.csv'
+    };
+    
+    const url = popularDatasets[datasetId];
+    if (url) {
+        // 切换到手动输入标签页并填充数据
+        switchDownloadTab('manual');
+        
+        document.getElementById('downloadUrl').value = url;
+        document.getElementById('downloadName').value = name;
+        document.getElementById('downloadDescription').value = description;
+    } else {
+        alert('该数据集暂不可用');
+    }
+}
+
+/**
+ * 取消下载
+ */
+function cancelDownload() {
+    if (datasetDownloader && datasetDownloader.currentTaskId) {
+        datasetDownloader.cancelDownload(datasetDownloader.currentTaskId);
+    }
 }
 
 // 当页面加载完成时初始化

@@ -1,133 +1,111 @@
 {% extends "labeler_base.html" %}
 {% block title %}个人资料{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
 {% block content %}
-<style>
-    .profile-container {
-        max-width: 700px;
-        margin: 40px auto;
-        padding: 30px;
-        background: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .profile-container:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-    }
-    .profile-header {
-        text-align: center;
-        margin-bottom: 30px;
-    }
-    .profile-header h1 {
-        font-size: 2.5rem;
-        color: #2c3e50;
-        margin-bottom: 10px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    .avatar {
-        width: 100px;
-        height: 100px;
-        background: linear-gradient(45deg, #007bff, #00c4ff);
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 36px;
-        font-weight: bold;
-        margin: 0 auto 20px;
-        box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
-        transition: transform 0.3s ease;
-    }
-    .avatar:hover {
-        transform: scale(1.05);
-    }
-    .form-group {
-        margin-bottom: 25px;
-        position: relative;
-    }
-    .form-group label {
-        display: block;
-        font-size: 1.1rem;
-        color: #34495e;
-        margin-bottom: 8px;
-        font-weight: 600;
-    }
-    .form-group input {
-        width: 100%;
-        padding: 12px 15px;
-        border: 2px solid #dfe6e9;
-        border-radius: 8px;
-        font-size: 1rem;
-        color: #2d3436;
-        background-color: #fff;
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-    .form-group input:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
-        outline: none;
-    }
-    .save-btn {
-        display: block;
-        width: 100%;
-        padding: 14px;
-        background: linear-gradient(90deg, #007bff, #0056b3);
-        color: white;
-        font-size: 1.1rem;
-        font-weight: bold;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background 0.3s ease, transform 0.2s ease;
-    }
-    .save-btn:hover {
-        background: linear-gradient(90deg, #0056b3, #003d82);
-        transform: translateY(-2px);
-    }
-    .save-btn:active {
-        transform: translateY(0);
-    }
-    .user-id {
-        font-size: 1rem;
-        color: #636e72;
-        margin-bottom: 20px;
-        text-align: center;
-    }
-</style>
 <div class="profile-container">
     <div class="profile-header">
-        <h1>Your Profile</h1>
-        <p class="user-id"><strong>User ID:</strong> {{ user.id }}</p>
+        <h1>个人资料</h1>
         <div class="avatar">
-            {{ user.first_name[0]|upper }}.{{ user.last_name[0]|upper }}
+            {{ current_user.first_name[0] if current_user.first_name else 'U' }}{{ current_user.last_name[0] if current_user.last_name else '' }}
         </div>
     </div>
-
-    <form method="POST" action="{{ url_for('auth.profile') }}">
-        <div class="form-group">
-            <label for="first_name">First Name</label>
-            <input id="first_name" name="first_name" type="text" value="{{ user.first_name }}" placeholder="First Name">
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number" data-stat="projects">0</div>
+            <div class="stat-label">项目</div>
         </div>
-        <div class="form-group">
-            <label for="last_name">Last Name</label>
-            <input id="last_name" name="last_name" type="text" value="{{ user.last_name }}" placeholder="Last Name">
+        <div class="stat-card">
+            <div class="stat-number" data-stat="datasets">0</div>
+            <div class="stat-label">数据集</div>
         </div>
-        <div class="form-group">
-            <label for="email">Email</label>
-            <input id="email" name="email" type="email" value="{{ user.email }}" placeholder="Email">
+        <div class="stat-card">
+            <div class="stat-number" data-stat="annotations">0</div>
+            <div class="stat-label">标注</div>
         </div>
-        <div class="form-group">
-            <label for="password">New Password (leave blank to keep current)</label>
-            <input id="password" name="password" type="password" placeholder="New Password">
+        <div class="stat-card">
+            <div class="stat-number" data-stat="training_sessions">0</div>
+            <div class="stat-label">训练次数</div>
         </div>
-        <div class="form-group">
-            <label for="company">Company</label>
-            <input id="company" name="company" type="text" value="{{ user.company or '' }}" placeholder="Company">
+    </div>
+    
+    <div class="profile-info">
+        <div class="info-section">
+            <h3 class="section-title">
+                <i class="fas fa-user"></i>
+                基本信息
+            </h3>
+            <div class="info-item">
+                <span class="info-label">用户名</span>
+                <span class="info-value" data-field="username">{{ current_user.username }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">邮箱</span>
+                <span class="info-value" data-field="email">{{ current_user.email }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">姓名</span>
+                <span class="info-value" data-field="first_name">{{ current_user.first_name }} {{ current_user.last_name }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">公司</span>
+                <span class="info-value" data-field="company">{{ current_user.company or '未设置' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">注册时间</span>
+                <span class="info-value" data-field="join_date">{{ current_user.created_at.strftime('%Y年%m月%d日') if current_user.created_at else '未知' }}</span>
+            </div>
         </div>
-        <button type="submit" class="save-btn">Save Changes</button>
-    </form>
+        
+        <div class="info-section">
+            <h3 class="section-title">
+                <i class="fas fa-cog"></i>
+                账户管理
+            </h3>
+            <div class="info-item">
+                <span class="info-label">账户状态</span>
+                <span class="info-value">活跃</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">最后登录</span>
+                <span class="info-value">{{ current_user.last_login_at.strftime('%Y-%m-%d %H:%M') if current_user.last_login_at else '未知' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">存储使用</span>
+                <span class="info-value">2.5 GB / 10 GB</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="action-buttons">
+        <button class="btn btn-primary" id="editProfileBtn">
+            <i class="fas fa-edit"></i>
+            编辑资料
+        </button>
+        <button class="btn btn-secondary" id="changePasswordBtn">
+            <i class="fas fa-key"></i>
+            更改密码
+        </button>
+        <button class="btn btn-secondary" id="exportDataBtn">
+            <i class="fas fa-download"></i>
+            导出数据
+        </button>
+        <button class="btn btn-secondary" id="settingsBtn">
+            <i class="fas fa-cog"></i>
+            设置
+        </button>
+        <button class="btn btn-danger" id="deleteAccountBtn">
+            <i class="fas fa-trash"></i>
+            删除账户
+        </button>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/profile.js') }}"></script>
 {% endblock %}

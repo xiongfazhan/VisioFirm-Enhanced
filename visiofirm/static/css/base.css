@@ -1,0 +1,228 @@
+/* 基础布局样式 */
+html, body {
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; 
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.top-bar {
+    background: var(--card-bg);
+    padding: 0 24px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    height: 64px;
+    position: relative;
+    z-index: 100;
+}
+
+.top-bar img {
+    height: 40px;
+    margin-left: 16px;
+}
+
+main {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.top-bar h1 a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.top-bar h1 a:hover {
+    color: var(--primary-hover);
+}
+
+.top-bar .nav-links {
+    display: flex;
+    gap: 24px;
+    margin-left: auto;
+    align-items: center;
+}
+
+.top-bar .nav-links a {
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.top-bar .nav-links a:hover {
+    background: var(--hover-bg);
+    color: var(--primary-color);
+}
+
+.top-bar .nav-links a.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.user-menu {
+    position: relative;
+    margin-left: 16px;
+}
+
+.user-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-color);
+    transition: all 0.2s ease;
+}
+
+.user-menu-btn:hover {
+    background: var(--hover-bg);
+    border-color: var(--primary-color);
+}
+
+.user-menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    min-width: 200px;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.user-menu-dropdown a {
+    display: block;
+    padding: 12px 16px;
+    color: var(--text-color);
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.user-menu-dropdown a:hover {
+    background: var(--hover-bg);
+}
+
+.user-menu-dropdown a.logout {
+    color: var(--danger-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.user-menu-dropdown a.logout:hover {
+    background: var(--danger-light);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .top-bar {
+        padding: 0 16px;
+    }
+    
+    .top-bar .nav-links {
+        gap: 16px;
+    }
+    
+    .top-bar .nav-links a {
+        padding: 6px 12px;
+        font-size: 14px;
+    }
+    
+    .user-menu-btn {
+        padding: 6px 10px;
+    }
+    
+    .user-menu-btn span {
+        display: none;
+    }
+}
+
+/* 导航下拉菜单样式 */
+.nav-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.dropdown-toggle i {
+    font-size: 12px;
+    transition: transform 0.3s ease;
+}
+
+.nav-dropdown:hover .dropdown-toggle i {
+    transform: rotate(180deg);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 160px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.nav-dropdown:hover .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: block;
+    padding: 12px 16px;
+    color: #495057;
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background: #f8f9fa;
+    color: #007bff;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    width: 16px;
+    text-align: center;
+}

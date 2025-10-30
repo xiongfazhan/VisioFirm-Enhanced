@@ -1,5 +1,10 @@
 {% extends "labeler_base.html" %}
 {% block title %}设置{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+{% endblock %}
+
 {% block content %}
 
     <h1>账户设置</h1>
@@ -38,4 +43,8 @@
         </ul>
     </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 {% endblock %}

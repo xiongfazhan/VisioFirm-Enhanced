@@ -1,0 +1,107 @@
+{% extends "labeler_base.html" %}
+
+{% block title %}训练管理 - VisioFirm{% endblock %}
+
+{% block content %}
+<div class="training-management">
+    <div class="management-header">
+        <div class="header-content">
+            <h1 class="page-title">训练管理</h1>
+            <p class="page-subtitle">管理所有训练任务和查看训练历史</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-primary" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i>
+                刷新
+            </button>
+            <button class="btn btn-success" id="createTrainingBtn">
+                <i class="fas fa-plus"></i>
+                新建训练
+            </button>
+        </div>
+    </div>
+
+    <!-- 训练统计 -->
+    <div class="training-stats">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-play-circle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="totalTasks">0</div>
+                <div class="stat-label">总任务数</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="completedTasks">0</div>
+                <div class="stat-label">已完成</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="runningTasks">0</div>
+                <div class="stat-label">进行中</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="failedTasks">0</div>
+                <div class="stat-label">失败</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 训练任务列表 -->
+    <div class="training-tasks">
+        <div class="tasks-header">
+            <h2 class="section-title">训练任务</h2>
+            <div class="tasks-filters">
+                <select class="filter-select" id="statusFilter">
+                    <option value="">所有状态</option>
+                    <option value="running">进行中</option>
+                    <option value="completed">已完成</option>
+                    <option value="failed">失败</option>
+                    <option value="stopped">已停止</option>
+                </select>
+                <select class="filter-select" id="projectFilter">
+                    <option value="">所有项目</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="tasks-list" id="tasksList">
+            <!-- 任务列表将通过JavaScript动态加载 -->
+        </div>
+    </div>
+
+    <!-- 训练详情模态框 -->
+    <div class="modal" id="taskDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">训练任务详情</h3>
+                <button class="modal-close" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="taskDetailContent">
+                <!-- 任务详情内容 -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="closeModalBtn2">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/training_management.js') }}"></script>
+{% endblock %}
