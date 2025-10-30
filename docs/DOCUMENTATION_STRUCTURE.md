@@ -13,7 +13,6 @@
 - **`DEVELOPMENT_RULES.md`** - 开发规范（重要）
 - **`CODE_STANDARDS_README.md`** - 代码规范使用指南
 - **`CHANGELOG.md`** - 更新日志
-- **`CHANGELOG_ENHANCED.md`** - 增强版更新日志
 
 #### 其他
 - **`ATTRIBUTION.md`** - 致谢和引用

@@ -56,7 +56,7 @@
 ```
 VisioFirm/
 ├── README.md                 # 项目主要说明 / Main documentation
-├── CHANGELOG_ENHANCED.md     # 更新日志 / Change log
+├── CHANGELOG.md              # 更新日志 / Change log
 ├── LICENSE                   # 许可证文件 / License file
 ├── setup.py                  # 安装配置 / Installation config
 ├── requirements.txt          # 依赖包列表 / Dependencies
