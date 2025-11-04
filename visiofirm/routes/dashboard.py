@@ -52,7 +52,7 @@ def get_projects_data():
                     try:
                         with sqlite3.connect(db_path) as conn:
                             cursor = conn.cursor()
-                            cursor.execute('SELECT creation_date, annotation_type, description FROM Project_Configuration WHERE project_name = ?', (project_name,))
+                            cursor.execute('SELECT creation_date, setup_type, description FROM Project_Configuration WHERE project_name = ?', (project_name,))
                             result = cursor.fetchone()
                             if result:
                                 creation_date = result[0]
@@ -88,36 +88,56 @@ def index():
     """仪表板主页面"""
     return render_template('index.html')
 
-@bp.route('/api/projects', methods=['GET'])
+@bp.route('/api/projects', methods=['GET', 'POST'])
 @login_required
 @handle_api_errors
 def get_projects():
     """
-    获取项目列表API
-    
-    Returns:
-        200: 成功返回项目列表
-        500: 服务器错误
-        
-    Response Data:
-        {
-            "success": true,
-            "message": "获取项目列表成功",
-            "data": [
-                {
-                    "name": "project1",
-                    "description": "项目描述",
-                    "annotation_type": "bounding_box",
-                    "created_at": "2025-10-13",
-                    "image_count": 100,
-                    "annotation_count": 75,
-                    "class_count": 10
-                }
-            ]
-        }
+    获取或创建项目接口
     """
-    projects = get_projects_data()
-    return APIResponse.success(data=projects, message="获取项目列表成功")
+    if request.method == 'GET':
+        projects = get_projects_data()
+        return APIResponse.success(data=projects, message="获取项目列表成功")
+
+    payload = request.get_json(silent=True) or {}
+    raw_name = (payload.get('name') or '').strip()
+    description = (payload.get('description') or '').strip()
+    annotation_type = (payload.get('annotation_type') or 'Bounding Box').strip()
+
+    if not raw_name:
+        project_name = generate_unique_project_name()
+    else:
+        project_name = ensure_unique_project_name(raw_name)
+
+    annotation_map = {
+        'bounding_box': 'Bounding Box',
+        'oriented_bounding_box': 'Oriented Bounding Box',
+        'segmentation': 'Segmentation'
+    }
+    normalized_key = annotation_type.lower()
+    setup_type = annotation_map.get(normalized_key, annotation_map.get(annotation_type, 'Bounding Box'))
+
+    project_path = os.path.join(PROJECTS_FOLDER, secure_filename(project_name))
+    images_path = os.path.join(project_path, 'images')
+
+    if os.path.exists(project_path):
+        raise APIError("项目名称已存在", code=400, error_type="ProjectExists")
+
+    try:
+        os.makedirs(images_path, exist_ok=True)
+        Project(project_name, description, setup_type, project_path)
+        return APIResponse.success(
+            data={
+                'name': project_name,
+                'description': description,
+                'annotation_type': setup_type
+            },
+            message="项目创建成功",
+            code=201
+        )
+    except Exception as e:
+        shutil.rmtree(project_path, ignore_errors=True)
+        raise APIError(f"创建项目失败: {str(e)}", code=500, error_type="ProjectCreationError")
 
 def extract_archive(file_path, extract_path):
     """Extract archive files (zip, tar, rar) to the specified path and validate images."""
