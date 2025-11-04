@@ -271,7 +271,7 @@ Unlike other annotation tool, this one is majoraly focused on CV tasks annotatio
 - **Extensible & Open-Source**: Customize with your own ultralytics models or integrate into pipelines—contributions welcome!
 - **SAM2-base webgpu**: Insta-drawing of annotations via SAM2 with worker offloading and auto-annotation for faster computing!
 
-![Annotation Editing Demo](https://github.com/OschAI/VisioFirm/blob/main/examples/orange-apples-test.gif)
+![Annotation Editing Demo](https://github.com/OschAI/VisioFirm/blob/main/examples/orange-apples-test.gif) 
 
 ## Features
 
@@ -289,7 +289,7 @@ Unlike other annotation tool, this one is majoraly focused on CV tasks annotatio
 - **SAM2 Optimizations**: Worker-based offloading and improved auto-annotation for rapid, high-performance segmentation in the browser.
 - **Cross-Platform**: Runs locally on Linux, macOS, or Windows via Python— no cloud dependency.
 
-![Annotation Editing Demo](https://github.com/OschAI/VisioFirm/blob/main/examples/AIpreannotator-demo.gif)
+![Annotation Editing Demo](https://github.com/OschAI/VisioFirm/blob/main/examples/AIpreannotator-demo.gif) 
 
 ---
 
